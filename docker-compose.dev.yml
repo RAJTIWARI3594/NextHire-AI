@@ -1,0 +1,26 @@
+version: "3.8"
+
+services:
+  app-dev:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dev
+    container_name: nexthire-app-dev
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.development
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+    networks:
+      - nexthire-dev-network
+
+networks:
+  nexthire-dev-network:
+    driver: bridge

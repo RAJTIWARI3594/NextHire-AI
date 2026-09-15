@@ -1,0 +1,33 @@
+name: Security & Vulnerability Audit
+
+on:
+  schedule:
+    - cron: "0 2 * * 1" # Weekly Monday at 2am UTC
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  security-audit:
+    name: Security Vulnerability Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: NPM Dependency Audit
+        run: npm audit --audit-level=high || true
+
+      - name: Run Trivy Repository Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: "fs"
+          ignore-unfixed: true
+          format: "table"
+          severity: "CRITICAL,HIGH"

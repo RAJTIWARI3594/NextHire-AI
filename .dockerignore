@@ -1,0 +1,31 @@
+# Dependencies & Build Outputs
+node_modules
+.next
+out
+build
+dist
+*.log
+*.tmp
+
+# Environment Files (Do not package secrets)
+.env
+.env*.local
+.env.production
+.env.staging
+
+# Version Control & IDE
+.git
+.gitignore
+.github
+.vscode
+.idea
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Docker & Infrastructure scripts
+docker
+infrastructure
+monitoring
+*.md

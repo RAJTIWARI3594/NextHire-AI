@@ -1,0 +1,131 @@
+name: Production CI/CD Pipeline & Automated Release
+
+on:
+  push:
+    branches: [main, staging]
+    tags: ["v*"]
+  pull_request:
+    branches: [main, staging]
+
+permissions:
+  contents: write
+  packages: read
+  security-events: write
+
+jobs:
+  validate-and-security:
+    name: Code Validation & Security Scan Gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: "npm"
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Execute Type-Check Validation
+        run: npm run type-check
+
+      - name: Execute ESLint Validation
+        run: npm run lint
+
+      - name: Execute Format Check
+        run: npm run format:check
+
+      - name: Execute Pre-Flight Environment Validation
+        run: npm run env:check
+
+      - name: Security Vulnerability Scan (Trivy)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: "fs"
+          scan-ref: "."
+          format: "table"
+          exit-code: "0" # Non-blocking warning for audit logs
+          severity: "CRITICAL,HIGH"
+
+  deploy-staging:
+    name: Deploy to Staging Environment
+    needs: validate-and-security
+    if: github.ref == 'refs/heads/staging'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel Environment Information (Staging)
+        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build Project Artifacts (Staging)
+        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy Project Artifacts (Staging)
+        run: vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }}
+
+  deploy-production:
+    name: Zero-Downtime Production Deployment
+    needs: validate-and-security
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
+      - name: Install Vercel CLI & Supabase CLI
+        run: |
+          npm install --global vercel@latest
+          npm install --global supabase@latest
+
+      - name: Execute Pre-Deployment Database Migrations
+        env:
+          SUPABASE_DB_URL: ${{ secrets.PROD_SUPABASE_DB_URL }}
+        run: |
+          echo "Running database migration validation..."
+          node scripts/migrate.js --validate
+
+      - name: Pull Vercel Environment Information (Production)
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build Production Bundle
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy to Vercel Production
+        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Verify Production Health Check
+        run: |
+          echo "Executing post-deploy health check..."
+          node scripts/health-check.js || (node scripts/rollback.js && exit 1)
+
+      - name: Generate Automated Production Release Tag
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tag = `v1.0.${Date.now()}`;
+            await github.rest.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `refs/tags/${tag}`,
+              sha: context.sha
+            });
+            console.log(`Created release tag: ${tag}`);

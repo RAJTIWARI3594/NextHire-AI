@@ -1,0 +1,13 @@
+# Global Codeowners
+* @nexthire-ai/core-team
+
+# Critical Infrastructure & Security
+/lib/security/ @nexthire-ai/security-team
+/middleware.ts @nexthire-ai/security-team
+/next.config.mjs @nexthire-ai/devops-team
+
+# Database & Migrations
+/supabase/ @nexthire-ai/database-team
+
+# CI/CD Workflows
+/.github/workflows/ @nexthire-ai/devops-team

@@ -1,0 +1,60 @@
+# Next.js Build & Cache
+.next/
+out/
+build/
+dist/
+.turbo/
+.cache/
+
+# Dependencies
+node_modules/
+
+# Environment Variables & Secrets (CRITICAL SECURITY)
+.env
+.env.local
+.env.development
+.env.production
+.env.staging
+.env*.local
+!.env.example
+
+# Local Backups & Temporary Snapshots
+backups/**
+*.tmp
+*.temp
+
+# Operating System & IDE Files
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.antigravity-ide/
+
+# Logs & Diagnostics
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+*.log
+
+# Coverage & Testing Output
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+
+.vercel
+.env*
+.env.local
+.env
+scratch/test-supabase-connection.js

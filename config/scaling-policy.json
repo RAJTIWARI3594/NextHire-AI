@@ -1,0 +1,40 @@
+{
+  "version": "1.0.0",
+  "appName": "nexthire-ai",
+  "scalingRules": {
+    "apiGateway": {
+      "minInstances": 2,
+      "maxInstances": 20,
+      "targetCpuUtilizationPercent": 70,
+      "targetRequestsPerSecond": 500,
+      "scaleOutCooldownSeconds": 60,
+      "scaleInCooldownSeconds": 300
+    },
+    "aiProviderPool": {
+      "model": "gemini-1.5-flash",
+      "maxConcurrentRequestsPerNode": 50,
+      "requestTimeoutMs": 15000,
+      "retryAttempts": 3,
+      "circuitBreakerErrorThresholdPercent": 15
+    },
+    "databaseConnectionPool": {
+      "pooler": "PgBouncer",
+      "mode": "transaction",
+      "maxConnections": 100,
+      "defaultPoolSize": 20,
+      "statementTimeoutMs": 15000,
+      "idleTimeoutMs": 10000
+    },
+    "backgroundWorkers": {
+      "minReplicas": 2,
+      "maxReplicas": 10,
+      "triggerQueueDepth": 50,
+      "pollingIntervalSeconds": 10
+    },
+    "storageScaling": {
+      "provider": "Supabase Storage / GCS",
+      "autoExpandThresholdPercent": 80,
+      "maxSingleFileSizeBytes": 15728640
+    }
+  }
+}

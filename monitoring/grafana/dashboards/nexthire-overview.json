@@ -1,0 +1,38 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": 1,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "type": "stat",
+      "title": "System Status",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "targets": [{ "expr": "up{job=\"nexthire-app\"}" }]
+    },
+    {
+      "type": "timeseries",
+      "title": "HTTP Request Latency (ms)",
+      "gridPos": { "h": 8, "w": 12, "x": 6, "y": 0 },
+      "targets": [{ "expr": "nexthire_request_duration_ms_avg" }]
+    },
+    {
+      "type": "timeseries",
+      "title": "Heap Memory Usage",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [{ "expr": "node_memory_heap_bytes" }]
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["nexthire", "production", "sre"],
+  "time": { "from": "now-6h", "to": "now" },
+  "title": "NextHire AI Operational Dashboard",
+  "uid": "nexthire-prod-overview"
+}
