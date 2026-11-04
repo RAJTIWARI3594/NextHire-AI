@@ -30,6 +30,9 @@ export async function signUpStudent(data: StudentSignupFormData) {
       data: {
         full_name: data.fullName,
         role: "student",
+        college: data.college,
+        course: data.course,
+        graduationYear: String(data.graduationYear),
       },
       emailRedirectTo: `${window.location.origin}/auth/callback`,
     },
@@ -37,35 +40,7 @@ export async function signUpStudent(data: StudentSignupFormData) {
 
   if (authError) throw authError;
 
-  if (authData.user) {
-    // Fetch profile created by trigger (retry briefly to handle trigger latency)
-    const profile = await waitForProfile(authData.user.id);
-    if (profile) {
-      await supabase.from("student_profiles").insert({
-        profile_id: profile.id,
-        college: data.college,
-        course: data.course,
-        graduation_year: data.graduationYear,
-      });
-    }
-  }
-
   return authData;
-}
-
-async function waitForProfile(authUserId: string) {
-  const supabase = createClient();
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("auth_user_id", authUserId)
-      .maybeSingle();
-    if (data) return data;
-    if (error && !error.message.includes("PGRST116")) return null;
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
-  return null;
 }
 
 export async function signUpRecruiter(data: RecruiterSignupFormData) {
@@ -88,26 +63,16 @@ export async function signUpRecruiter(data: RecruiterSignupFormData) {
       data: {
         full_name: data.fullName,
         role: "recruiter",
+        company_name: data.companyName,
+        company_website: data.companyWebsite,
+        designation: data.designation,
+        company_email: data.companyEmail,
       },
       emailRedirectTo: `${window.location.origin}/auth/callback`,
     },
   });
 
   if (authError) throw authError;
-
-  if (authData.user) {
-    // Fetch profile created by trigger (retry briefly to handle trigger latency)
-    const profile = await waitForProfile(authData.user.id);
-    if (profile) {
-      await supabase.from("recruiter_profiles").insert({
-        profile_id: profile.id,
-        company_name: data.companyName,
-        website: data.companyWebsite,
-        designation: data.designation,
-        company_email: data.companyEmail,
-      });
-    }
-  }
 
   return authData;
 }
