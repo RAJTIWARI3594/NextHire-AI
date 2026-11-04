@@ -608,7 +608,8 @@ DECLARE
   assigned_role public.user_role;
   user_full_name TEXT;
 BEGIN
-  assigned_role := COALESCE((NEW.raw_user_meta_data->>'role')::public.user_role, 'student');
+  -- User metadata is user-controlled; never grant privileged roles during signup.
+  assigned_role := 'student';
   user_full_name := COALESCE(NEW.raw_user_meta_data->>'full_name', 'New User');
 
   INSERT INTO public.profiles (auth_user_id, role, full_name, avatar_url)
