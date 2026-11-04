@@ -3,7 +3,7 @@
   "name": "nexthire-ai",
   "framework": "nextjs",
   "cleanUrls": true,
-  "regions": ["iad1", "sfo1", "fra1"],
+  "regions": ["bom1"],
   "functions": {
     "app/api/**/*": {
       "maxDuration": 30,
