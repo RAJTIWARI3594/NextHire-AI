@@ -1,0 +1,14 @@
+-- Storage access policies for private user uploads and public company branding.
+CREATE POLICY "Users read own certificates" ON storage.objects FOR SELECT TO authenticated USING (bucket_id='certificates' AND (storage.foldername(name))[1]=auth.uid()::text);
+CREATE POLICY "Users upload own certificates" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id='certificates' AND (storage.foldername(name))[1]=auth.uid()::text);
+CREATE POLICY "Users update own certificates" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id='certificates' AND (storage.foldername(name))[1]=auth.uid()::text) WITH CHECK (bucket_id='certificates' AND (storage.foldername(name))[1]=auth.uid()::text);
+CREATE POLICY "Users delete own certificates" ON storage.objects FOR DELETE TO authenticated USING (bucket_id='certificates' AND (storage.foldername(name))[1]=auth.uid()::text);
+CREATE POLICY "Users read own documents" ON storage.objects FOR SELECT TO authenticated USING (bucket_id='documents' AND (storage.foldername(name))[1]=auth.uid()::text);
+CREATE POLICY "Users upload own documents" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id='documents' AND (storage.foldername(name))[1]=auth.uid()::text);
+CREATE POLICY "Users update own documents" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id='documents' AND (storage.foldername(name))[1]=auth.uid()::text) WITH CHECK (bucket_id='documents' AND (storage.foldername(name))[1]=auth.uid()::text);
+CREATE POLICY "Users delete own documents" ON storage.objects FOR DELETE TO authenticated USING (bucket_id='documents' AND (storage.foldername(name))[1]=auth.uid()::text);
+CREATE POLICY "Recruiters upload company logos" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id='company-logos' AND (storage.foldername(name))[1]=auth.uid()::text);
+CREATE POLICY "Recruiters update company logos" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id='company-logos' AND (storage.foldername(name))[1]=auth.uid()::text) WITH CHECK (bucket_id='company-logos' AND (storage.foldername(name))[1]=auth.uid()::text);
+CREATE POLICY "Recruiters delete company logos" ON storage.objects FOR DELETE TO authenticated USING (bucket_id='company-logos' AND (storage.foldername(name))[1]=auth.uid()::text);
+UPDATE storage.buckets SET file_size_limit=10485760,allowed_mime_types=ARRAY['application/pdf','image/png','image/jpeg','image/webp'] WHERE id IN ('resumes','certificates','documents');
+UPDATE storage.buckets SET file_size_limit=5242880,allowed_mime_types=ARRAY['image/png','image/jpeg','image/webp','image/svg+xml'] WHERE id IN ('profile-images','company-logos');
