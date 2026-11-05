@@ -63,9 +63,9 @@ export interface OfferLetter {
 }
 
 export interface HiringAnalyticsData {
-  avgHiringTimeDays: number;
-  offerAcceptanceRate: number;
-  interviewPassRate: number;
+  avgHiringTimeDays: number | null;
+  offerAcceptanceRate: number | null;
+  interviewPassRate: number | null;
   totalApplicants: number;
   topSource: string;
   pipelineFunnel: { stage: string; count: number }[];
