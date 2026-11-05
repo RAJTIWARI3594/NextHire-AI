@@ -742,3 +742,57 @@ ON CONFLICT (id) DO NOTHING;
 CREATE POLICY "Public profile images viewable" ON storage.objects FOR SELECT USING (bucket_id = 'profile-images');
 CREATE POLICY "Users upload own profile image" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'profile-images' AND auth.role() = 'authenticated');
 CREATE POLICY "Users access own resumes" ON storage.objects FOR SELECT USING (bucket_id = 'resumes' AND auth.role() = 'authenticated');
+
+
+-- ============================================================================
+-- External employer-hosted job board (applications are never submitted to NextHire)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.external_jobs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  company_name TEXT NOT NULL,
+  location TEXT NOT NULL DEFAULT 'India',
+  work_mode TEXT NOT NULL DEFAULT 'On-site',
+  employment_type TEXT NOT NULL DEFAULT 'Full time',
+  experience_level TEXT NOT NULL DEFAULT 'Fresher',
+  salary_text TEXT NOT NULL DEFAULT 'Not disclosed',
+  description TEXT NOT NULL,
+  requirements TEXT[] NOT NULL DEFAULT '{}',
+  skills TEXT[] NOT NULL DEFAULT '{}',
+  source_name TEXT NOT NULL,
+  source_url TEXT NOT NULL,
+  apply_url TEXT NOT NULL,
+  is_fresher BOOLEAN NOT NULL DEFAULT TRUE,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  posted_at TIMESTAMPTZ,
+  verified_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  closing_date DATE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT external_jobs_apply_https
+    CHECK (apply_url ~ '^https://[A-Za-z0-9.-]+(:[0-9]+)?(/|$)'),
+  CONSTRAINT external_jobs_source_https
+    CHECK (source_url ~ '^https://[A-Za-z0-9.-]+(:[0-9]+)?(/|$)')
+);
+
+CREATE INDEX IF NOT EXISTS external_jobs_active_created_idx
+  ON public.external_jobs (is_active, created_at DESC);
+CREATE INDEX IF NOT EXISTS external_jobs_company_idx
+  ON public.external_jobs (company_name);
+
+ALTER TABLE public.external_jobs ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.external_jobs FROM anon, authenticated;
+GRANT SELECT ON TABLE public.external_jobs TO anon, authenticated;
+
+DROP POLICY IF EXISTS "Public can read active external jobs" ON public.external_jobs;
+CREATE POLICY "Public can read active external jobs"
+  ON public.external_jobs
+  FOR SELECT
+  TO anon, authenticated
+  USING (
+    is_active = TRUE
+    AND apply_url ~ '^https://[A-Za-z0-9.-]+(:[0-9]+)?(/|$)'
+  );
+
+COMMENT ON TABLE public.external_jobs IS
+  'Curated third-party job postings. Applications must be completed on the employer website; NextHire does not accept external applications.';
