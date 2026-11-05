@@ -2,134 +2,135 @@ import { createClient } from "@/lib/supabase/client";
 import type {
   SubscriptionPlan,
   PaymentTransaction,
-  CouponCode,
-  InvoiceItem,
   AIUsageMetrics,
-  CMSPost,
+  InvoiceItem,
 } from "@/types/saas";
 
-export const MOCK_PLANS: SubscriptionPlan[] = [
-  {
-    id: "plan-free",
-    name: "Free",
-    priceMonthly: 0,
-    priceYearly: 0,
-    features: [
-      "Limited AI Chats (5/day)",
-      "Basic Resume Builder",
-      "Limited Job Applications",
-    ],
-    subscriberCount: 14250,
-    isActive: true,
-  },
-  {
-    id: "plan-pro",
-    name: "Pro",
-    priceMonthly: 19,
-    priceYearly: 190,
-    features: [
-      "Unlimited AI Chat & AI Coach",
-      "AI Resume Review & Cover Letters",
-      "AI Mock Interviews (Voice + Text)",
-      "Premium Resume Templates",
-      "Unlimited Job Applications",
-    ],
-    subscriberCount: 890,
-    isActive: true,
-  },
-  {
-    id: "plan-ent",
-    name: "Enterprise",
-    priceMonthly: 499,
-    priceYearly: 4990,
-    features: [
-      "Enterprise Recruiter Portal",
-      "AI Candidate Ranking Engine",
-      "Interview Scheduling & Chat",
-      "Offer Letter Generator",
-      "Priority API Access & Support",
-    ],
-    subscriberCount: 85,
-    isActive: true,
-  },
-];
-
-export const MOCK_TRANSACTIONS: PaymentTransaction[] = [
-  {
-    id: "tx-1",
-    userName: "Vercel Partner Labs",
-    userEmail: "billing@vercel.com",
-    amount: 499,
-    currency: "USD",
-    gateway: "stripe",
-    paymentMethod: "card",
-    status: "success",
-    transactionId: "pi_3MtwL2LkdIwbfR1n1",
-    date: "Aug 5, 2026",
-  },
-  {
-    id: "tx-2",
-    userName: "Aarav Sharma",
-    userEmail: "aarav@student.nexthire.ai",
-    amount: 19,
-    currency: "USD",
-    gateway: "razorpay",
-    paymentMethod: "upi",
-    status: "success",
-    transactionId: "pay_K1jL9xM2nO3p",
-    date: "Aug 4, 2026",
-  },
-];
-
 export async function fetchSubscriptionPlans(): Promise<SubscriptionPlan[]> {
+  // No subscription_plans/pricing configuration table exists in this database.
+  return [];
+}
+
+export async function fetchSubscriptionsOverview(): Promise<SubscriptionPlan[]> {
   const supabase = createClient();
-  const { data } = await supabase.from("subscription_plans").select("*");
+  const { data, error } = await supabase
+    .from("subscriptions")
+    .select("id, plan_name, status, current_period_end");
 
-  if (!data || data.length === 0) return MOCK_PLANS;
+  if (error) throw error;
 
-  return data.map((p) => ({
-    id: p.id,
-    name: p.name,
-    priceMonthly: Number(p.price_monthly),
-    priceYearly: Number(p.price_yearly),
-    features: p.features || [],
-    isActive: p.is_active,
+  const summary = new Map<string, { count: number; active: boolean }>();
+  (data || []).forEach((row) => {
+    const name = row.plan_name || "Unspecified";
+    const item = summary.get(name) || { count: 0, active: false };
+    item.count += 1;
+    item.active =
+      item.active ||
+      ["active", "trialing"].includes(String(row.status).toLowerCase());
+    summary.set(name, item);
+  });
+
+  return [...summary.entries()].map(([name, dataForPlan]) => ({
+    id: name,
+    name,
+    priceMonthly: null,
+    priceYearly: null,
+    features: [],
+    subscriberCount: dataForPlan.count,
+    isActive: dataForPlan.active,
   }));
 }
 
 export async function fetchTransactions(): Promise<PaymentTransaction[]> {
   const supabase = createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("payments")
-    .select("*, profiles(full_name, email)");
+    .select(
+      "id, profile_id, amount, currency, payment_method, status, transaction_id, created_at, profile:profiles!payments_profile_id_fkey(full_name)"
+    )
+    .order("created_at", { ascending: false });
 
-  if (!data || data.length === 0) return MOCK_TRANSACTIONS;
+  if (error) throw error;
 
-  return data.map((t) => ({
-    id: t.id,
-    userName: t.profiles?.full_name || "Subscriber",
-    userEmail: t.profiles?.email || "billing@nexthire.ai",
-    amount: Number(t.amount),
-    currency: t.currency || "USD",
-    gateway: t.gateway,
-    paymentMethod: t.payment_method,
-    status: t.status,
-    transactionId: t.transaction_id,
-    date: "Recent",
-  }));
+  return (data || []).map((payment: any) => {
+    const profile = Array.isArray(payment.profile)
+      ? payment.profile[0]
+      : payment.profile;
+    return {
+      id: payment.id,
+      userName: profile?.full_name || "Platform user",
+      userEmail: "Not available",
+      amount: Number(payment.amount || 0),
+      currency: payment.currency || "Not recorded",
+      gateway: "Not recorded",
+      paymentMethod: payment.payment_method || "Not recorded",
+      status: String(payment.status || "unknown").toLowerCase(),
+      transactionId: payment.transaction_id || "Not recorded",
+      date: payment.created_at
+        ? new Date(payment.created_at).toLocaleDateString("en-IN", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          })
+        : "Date unavailable",
+    };
+  });
+}
+
+export async function fetchInvoices(): Promise<InvoiceItem[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("invoices")
+    .select(
+      "id, invoice_number, pdf_url, created_at, payment:payments!invoices_payment_id_fkey(amount, currency, profile:profiles!payments_profile_id_fkey(full_name))"
+    )
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+
+  return (data || []).map((invoice: any) => {
+    const payment = Array.isArray(invoice.payment)
+      ? invoice.payment[0]
+      : invoice.payment;
+    const profile = Array.isArray(payment?.profile)
+      ? payment.profile[0]
+      : payment?.profile;
+    return {
+      id: invoice.id,
+      invoiceNumber: invoice.invoice_number || "Invoice",
+      userName: profile?.full_name || "Platform user",
+      userEmail: "Not available",
+      amount: Number(payment?.amount || 0),
+      currency: payment?.currency || "Not recorded",
+      taxAmount: null,
+      date: invoice.created_at
+        ? new Date(invoice.created_at).toLocaleDateString("en-IN", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          })
+        : "Date unavailable",
+      pdfUrl: invoice.pdf_url || undefined,
+    };
+  });
 }
 
 export async function fetchAIUsageMetrics(): Promise<AIUsageMetrics> {
+  const supabase = createClient();
+  const dayStart = new Date();
+  dayStart.setHours(0, 0, 0, 0);
+  const { count, error } = await supabase
+    .from("ai_chat_history")
+    .select("id", { count: "exact", head: true })
+    .gte("created_at", dayStart.toISOString());
+
+  if (error) throw error;
+
   return {
-    totalRequestsToday: 18500,
-    totalTokensUsed: 4250000,
-    totalCostUsd: 14.85,
-    costPerUserUsd: 0.00104,
-    featureBreakdown: [
-      { feature: "AI Career Coach", count: 8200, cost: 6.45 },
-      { feature: "AI Resume Review", count: 4500, cost: 3.8 },
-      { feature: "AI Mock Interview", count: 3800, cost: 3.1 },
-      { feature: "AI Cover Letter", count: 2000, cost: 1.5 },
-    ],
+    totalRequestsToday: count || 0,
+    totalTokensUsed: null,
+    totalCostUsd: null,
+    costPerUserUsd: null,
+    featureBreakdown: [],
   };
 }
