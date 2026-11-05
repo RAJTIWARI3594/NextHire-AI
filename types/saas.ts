@@ -1,8 +1,8 @@
 export interface SubscriptionPlan {
   id: string;
-  name: "Free" | "Pro" | "Enterprise";
-  priceMonthly: number;
-  priceYearly: number;
+  name: string;
+  priceMonthly: number | null;
+  priceYearly: number | null;
   features: string[];
   subscriberCount?: number;
   isActive: boolean;
@@ -14,9 +14,9 @@ export interface PaymentTransaction {
   userEmail: string;
   amount: number;
   currency: string;
-  gateway: "stripe" | "razorpay";
-  paymentMethod: "card" | "upi" | "netbanking";
-  status: "success" | "pending" | "failed" | "refunded";
+  gateway: string;
+  paymentMethod: string;
+  status: string;
   transactionId: string;
   date: string;
 }
@@ -38,16 +38,17 @@ export interface InvoiceItem {
   userName: string;
   userEmail: string;
   amount: number;
-  taxAmount: number;
+  currency: string;
+  taxAmount: number | null;
   date: string;
   pdfUrl?: string;
 }
 
 export interface AIUsageMetrics {
   totalRequestsToday: number;
-  totalTokensUsed: number;
-  totalCostUsd: number;
-  costPerUserUsd: number;
+  totalTokensUsed: number | null;
+  totalCostUsd: number | null;
+  costPerUserUsd: number | null;
   featureBreakdown: { feature: string; count: number; cost: number }[];
 }
 
