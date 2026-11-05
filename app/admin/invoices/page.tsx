@@ -1,73 +1,74 @@
 "use client";
 
-import React from "react";
-import {
-  FileText,
-  Download,
-  Mail,
-  CheckCircle2,
-  DollarSign,
-} from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { FileText, Download, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useSaaSStore } from "@/lib/store/use-saas-store";
+import { fetchInvoices } from "@/services/saas-service";
+import type { InvoiceItem } from "@/types/saas";
 
 export default function InvoicesManagerPage() {
-  const { invoices } = useSaaSStore();
+  const [invoices, setInvoices] = useState<InvoiceItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    setError(null);
+    try { setInvoices(await fetchInvoices()); }
+    catch (loadError: unknown) { setError((loadError as Error)?.message || "Invoices could not be loaded."); }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => { load(); }, []);
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">
-          Automated PDF Invoice Management
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          View tax GST calculations, download official invoice PDFs, and
-          dispatch email billing receipts.
-        </p>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Invoice Records</h1>
+          <p className="text-sm text-muted-foreground">
+            Existing invoice rows and stored PDF links only. GST calculations and email dispatch are not inferred.
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={load} disabled={loading}>
+          <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Refresh
+        </Button>
       </div>
-
-      <Card className="space-y-4 border-border/60 p-6 shadow-sm">
+      {error && <div role="alert" className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
+      <Card className="space-y-4 border-border/60 p-6">
         <div className="flex items-center justify-between border-b pb-3">
-          <h2 className="flex items-center gap-2 text-sm font-bold">
-            <FileText className="h-4 w-4 text-primary" /> Issued Tax Invoices
-          </h2>
-          <Badge variant="accent">GST / VAT Included</Badge>
+          <h2 className="flex items-center gap-2 text-sm font-bold"><FileText className="h-4 w-4 text-primary" /> Issued invoices</h2>
+          <Badge variant="outline">{invoices.length} records</Badge>
         </div>
-
-        <div className="space-y-3 text-xs">
-          {invoices.map((inv) => (
-            <div
-              key={inv.id}
-              className="flex items-center justify-between rounded-xl border bg-card/60 p-4"
-            >
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <p className="font-mono text-sm font-bold text-primary">
-                    {inv.invoiceNumber}
-                  </p>
-                  <Badge variant="success">Paid</Badge>
+        {loading ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">Loading invoices...</p>
+        ) : invoices.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">No invoices are recorded in the database.</p>
+        ) : (
+          <div className="space-y-3">
+            {invoices.map((invoice) => (
+              <div key={invoice.id} className="flex flex-col justify-between gap-3 rounded-xl border bg-card/60 p-4 sm:flex-row sm:items-center">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2"><p className="font-mono text-sm font-bold text-primary">{invoice.invoiceNumber}</p><Badge variant="outline">Recorded</Badge></div>
+                  <p className="text-xs text-muted-foreground">{invoice.userName} · {invoice.date}</p>
+                  <p className="text-xs text-muted-foreground">Tax amount: {invoice.taxAmount == null ? "Not recorded" : `${invoice.currency} ${invoice.taxAmount.toFixed(2)}`}</p>
                 </div>
-                <p className="text-muted-foreground">
-                  {inv.userName} ({inv.userEmail}) • {inv.date}
-                </p>
-                <p className="text-[11px] text-muted-foreground">
-                  GST/Tax: ${inv.taxAmount} USD
-                </p>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-extrabold">{invoice.currency} {invoice.amount.toLocaleString()}</span>
+                  {invoice.pdfUrl ? (
+                    <a href={invoice.pdfUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-md border px-3 py-2 text-xs font-medium hover:bg-muted">
+                      <Download className="h-3.5 w-3.5" /> Open PDF
+                    </a>
+                  ) : (
+                    <Badge variant="outline">No PDF stored</Badge>
+                  )}
+                </div>
               </div>
-
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-extrabold text-foreground">
-                  ${inv.amount} USD
-                </span>
-                <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-                  <Download className="h-3.5 w-3.5" /> Download PDF
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </Card>
     </div>
   );
