@@ -25,7 +25,7 @@ export interface JobModerationItem {
   title: string;
   companyName: string;
   postedDate: string;
-  status: "active" | "pending_approval" | "rejected" | "spam";
+  status: "active" | "inactive";
   reportsCount: number;
 }
 
