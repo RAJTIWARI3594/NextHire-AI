@@ -67,7 +67,8 @@ export async function updateSession(request: NextRequest) {
     path.startsWith("/dashboard") ||
     path.startsWith("/recruiter") ||
     path.startsWith("/admin") ||
-    path.startsWith("/profile");
+    path.startsWith("/profile") ||
+    path.startsWith("/account-suspended");
 
   // Guest access blocked: Unauthenticated users are redirected to login.
   // Only enforced when real Supabase is configured (server-side session exists).
@@ -90,12 +91,26 @@ export async function updateSession(request: NextRequest) {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("id, role")
+      .select("id, role, is_suspended")
       .eq("auth_user_id", user.id)
       .maybeSingle();
 
     if (profile?.role) {
       userRole = profile.role;
+    }
+
+    if (profile?.is_suspended === true && path !== "/account-suspended") {
+      url.pathname = "/account-suspended";
+      return NextResponse.redirect(url);
+    }
+    if (profile?.is_suspended !== true && path === "/account-suspended") {
+      url.pathname =
+        userRole === "admin"
+          ? "/admin"
+          : userRole === "recruiter"
+            ? "/recruiter"
+            : "/dashboard";
+      return NextResponse.redirect(url);
     }
 
     // Admin Strict Session Timeout Check
