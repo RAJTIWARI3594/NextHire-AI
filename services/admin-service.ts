@@ -2,88 +2,83 @@ import { createClient } from "@/lib/supabase/client";
 import type {
   PlatformUser,
   RecruiterApproval,
-  JobModerationItem,
   AuditLogItem,
   AdminMetrics,
 } from "@/types/admin";
 
-export const MOCK_ADMIN_METRICS: AdminMetrics = {
-  totalStudents: 14250,
-  totalRecruiters: 890,
-  totalCompanies: 410,
-  totalJobs: 1240,
-  totalApplications: 48900,
-  dailyAiRequests: 18500,
-  monthlyRevenueUsd: 42500,
-  serverHealth: "Healthy",
+export const EMPTY_ADMIN_METRICS: AdminMetrics = {
+  totalStudents: 0,
+  totalRecruiters: 0,
+  totalCompanies: 0,
+  totalJobs: 0,
+  totalApplications: 0,
+  dailyAiSessions: 0,
+  monthlyRevenueUsd: 0,
+  serverHealth: "Degraded",
 };
-
-export const MOCK_USERS_LIST: PlatformUser[] = [
-  {
-    id: "u-1",
-    fullName: "Aarav Sharma",
-    email: "aarav@student.nexthire.ai",
-    role: "student",
-    status: "active",
-    joinedDate: "Aug 1, 2026",
-    lastLogin: "Just now",
-  },
-  {
-    id: "u-2",
-    fullName: "Sarah Connor",
-    email: "sarah@vercel.com",
-    role: "recruiter",
-    status: "active",
-    joinedDate: "Jul 15, 2026",
-    lastLogin: "2 hours ago",
-  },
-  {
-    id: "u-3",
-    fullName: "Marcus Vance",
-    email: "marcus@nexusai.com",
-    role: "recruiter",
-    status: "pending",
-    joinedDate: "Aug 4, 2026",
-    lastLogin: "Yesterday",
-  },
-];
 
 export async function fetchAdminMetrics(): Promise<AdminMetrics> {
   const supabase = createClient();
-  const { count: studentCount } = await supabase
-    .from("profiles")
-    .select("*", { count: "exact", head: true })
-    .eq("role", "student");
-  const { count: recruiterCount } = await supabase
-    .from("profiles")
-    .select("*", { count: "exact", head: true })
-    .eq("role", "recruiter");
-  const { count: jobsCount } = await supabase
-    .from("jobs")
-    .select("*", { count: "exact", head: true });
+  const now = new Date();
+  const dayStart = new Date(now);
+  dayStart.setHours(0, 0, 0, 0);
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+
+  const [students, recruiters, companies, jobs, applications, aiSessions, payments] =
+    await Promise.all([
+      supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "student"),
+      supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "recruiter"),
+      supabase.from("companies").select("id", { count: "exact", head: true }),
+      supabase.from("jobs").select("id", { count: "exact", head: true }),
+      supabase.from("job_applications").select("id", { count: "exact", head: true }),
+      supabase.from("ai_chat_history").select("id", { count: "exact", head: true }).gte("created_at", dayStart.toISOString()),
+      supabase.from("payments").select("amount").eq("currency", "USD").in("status", ["success", "succeeded", "completed", "paid"]).gte("created_at", monthStart.toISOString()),
+    ]);
+
+  const responses = [students, recruiters, companies, jobs, applications, aiSessions, payments];
+  const failed = responses.find((response) => response.error);
+  if (failed?.error) throw failed.error;
+
+  const monthlyRevenueUsd = (payments.data || []).reduce(
+    (total, payment) => total + Number(payment.amount || 0),
+    0
+  );
 
   return {
-    ...MOCK_ADMIN_METRICS,
-    totalStudents: studentCount || MOCK_ADMIN_METRICS.totalStudents,
-    totalRecruiters: recruiterCount || MOCK_ADMIN_METRICS.totalRecruiters,
-    totalJobs: jobsCount || MOCK_ADMIN_METRICS.totalJobs,
+    totalStudents: students.count || 0,
+    totalRecruiters: recruiters.count || 0,
+    totalCompanies: companies.count || 0,
+    totalJobs: jobs.count || 0,
+    totalApplications: applications.count || 0,
+    dailyAiSessions: aiSessions.count || 0,
+    monthlyRevenueUsd,
+    serverHealth: "Healthy",
   };
 }
 
 export async function fetchAllUsers(): Promise<PlatformUser[]> {
   const supabase = createClient();
-  const { data } = await supabase.from("profiles").select("*");
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, full_name, role, is_suspended, created_at")
+    .order("created_at", { ascending: false });
 
-  if (!data || data.length === 0) return MOCK_USERS_LIST;
+  if (error) throw error;
 
-  return data.map((u) => ({
-    id: u.id,
-    fullName: u.full_name || "Platform User",
-    email: u.email || "user@nexthire.ai",
-    role: u.role || "student",
-    status: "active",
-    joinedDate: "Aug 2026",
-    lastLogin: "Recent",
+  return (data || []).map((profile) => ({
+    id: profile.id,
+    fullName: profile.full_name || "Platform User",
+    email: "Email not available",
+    role: profile.role || "student",
+    status: profile.is_suspended ? "suspended" : "active",
+    joinedDate: profile.created_at
+      ? new Date(profile.created_at).toLocaleDateString("en-IN", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        })
+      : "Date unavailable",
+    lastLogin: "Not tracked",
   }));
 }
 
@@ -91,12 +86,38 @@ export async function toggleUserStatus(
   userId: string,
   currentStatus: string
 ): Promise<void> {
-  const nextStatus = currentStatus === "active" ? "suspended" : "active";
   const supabase = createClient();
-  await supabase
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError) throw userError;
+  if (!user) throw new Error("Administrator sign-in is required.");
+
+  const { data: actor, error: actorError } = await supabase
     .from("profiles")
-    .update({ is_suspended: nextStatus === "suspended" })
-    .eq("id", userId);
+    .select("id, role")
+    .eq("auth_user_id", user.id)
+    .single();
+
+  if (actorError) throw actorError;
+  if (actor.role !== "admin") {
+    throw new Error("Only administrators can suspend or reactivate accounts.");
+  }
+  if (actor.id === userId) {
+    throw new Error("You cannot suspend your own administrator account.");
+  }
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .update({ is_suspended: currentStatus !== "active" })
+    .eq("id", userId)
+    .select("id")
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) throw new Error("User not found or administrator access denied.");
 }
 
 export async function fetchRecruiterRequests(): Promise<RecruiterApproval[]> {
@@ -147,25 +168,41 @@ export async function approveRecruiterRequest(
 }
 
 export async function fetchAuditLogs(): Promise<AuditLogItem[]> {
-  return [
-    {
-      id: "log-1",
-      adminName: "Super Admin (You)",
-      actionType: "Recruiter Verification",
-      targetResource: "Nexus AI Intelligence",
-      details:
-        "Approved corporate recruiter credentials and granted job posting access.",
-      timestamp: "Aug 5, 2026 • 04:12 PM",
-      ipAddress: "192.168.1.104",
-    },
-    {
-      id: "log-2",
-      adminName: "System Automation",
-      actionType: "Spam Moderation",
-      targetResource: "Job Listing #892",
-      details: "Auto-flagged suspicious external payment link.",
-      timestamp: "Aug 5, 2026 • 02:30 PM",
-      ipAddress: "127.0.0.1",
-    },
-  ];
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("audit_logs")
+    .select("id, actor_id, action, ip_address, details, created_at")
+    .order("created_at", { ascending: false })
+    .limit(100);
+
+  if (error) throw error;
+  const actorIds = [...new Set((data || []).map((row) => row.actor_id).filter(Boolean))];
+  const actorNames = new Map<string, string>();
+
+  if (actorIds.length) {
+    const { data: actors, error: actorsError } = await supabase
+      .from("profiles")
+      .select("id, full_name")
+      .in("id", actorIds);
+    if (actorsError) throw actorsError;
+    (actors || []).forEach((actor) => {
+      actorNames.set(actor.id, actor.full_name || "Administrator");
+    });
+  }
+
+  return (data || []).map((row) => {
+    const metadata =
+      row.details && typeof row.details === "object"
+        ? (row.details as Record<string, unknown>)
+        : {};
+    return {
+      id: row.id,
+      adminName: (row.actor_id && actorNames.get(row.actor_id)) || "System",
+      actionType: row.action,
+      targetResource: String(metadata.resource || metadata.table || "Platform"),
+      details: JSON.stringify(row.details || {}),
+      timestamp: new Date(row.created_at).toLocaleString("en-IN"),
+      ipAddress: row.ip_address || "Not recorded",
+    };
+  });
 }
