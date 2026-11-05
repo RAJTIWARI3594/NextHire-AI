@@ -7,8 +7,17 @@ import type {
 } from "@/lib/validations/auth";
 import type { Profile, StudentProfile, RecruiterProfile } from "@/types/auth";
 
+function ensureDemoAuthAllowed() {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "Authentication is temporarily unavailable because the authentication service is not configured."
+    );
+  }
+}
+
 export async function signUpStudent(data: StudentSignupFormData) {
   if (!isSupabaseConfigured()) {
+    ensureDemoAuthAllowed();
     return {
       user: {
         id: "demo-student-id",
@@ -45,6 +54,7 @@ export async function signUpStudent(data: StudentSignupFormData) {
 
 export async function signUpRecruiter(data: RecruiterSignupFormData) {
   if (!isSupabaseConfigured()) {
+    ensureDemoAuthAllowed();
     return {
       user: {
         id: "demo-recruiter-id",
@@ -79,6 +89,7 @@ export async function signUpRecruiter(data: RecruiterSignupFormData) {
 
 export async function signInWithEmail(data: LoginFormData) {
   if (!isSupabaseConfigured()) {
+    ensureDemoAuthAllowed();
     // Determine demo role from email pattern or default to student
     let role = "student";
     if (data.email.includes("admin")) role = "admin";
@@ -105,6 +116,7 @@ export async function signInWithEmail(data: LoginFormData) {
 
 export async function signInWithOAuth(provider: "google" | "github") {
   if (!isSupabaseConfigured()) {
+    ensureDemoAuthAllowed();
     window.location.href = "/dashboard";
     return;
   }
@@ -121,6 +133,7 @@ export async function signInWithOAuth(provider: "google" | "github") {
 
 export async function signOut() {
   if (!isSupabaseConfigured()) {
+    ensureDemoAuthAllowed();
     return;
   }
   const supabase = createClient();
@@ -130,6 +143,7 @@ export async function signOut() {
 
 export async function sendPasswordResetEmail(email: string) {
   if (!isSupabaseConfigured()) {
+    ensureDemoAuthAllowed();
     return { sent: true, demo: true };
   }
   const supabase = createClient();
@@ -142,6 +156,7 @@ export async function sendPasswordResetEmail(email: string) {
 
 export async function updateUserPassword(newPassword: string) {
   if (!isSupabaseConfigured()) {
+    ensureDemoAuthAllowed();
     return { updated: true, demo: true };
   }
   const supabase = createClient();
@@ -154,6 +169,7 @@ export async function updateUserPassword(newPassword: string) {
 
 export async function getUserProfile(authUserId: string) {
   if (!isSupabaseConfigured()) {
+    ensureDemoAuthAllowed();
     let role: "student" | "recruiter" | "admin" = "student";
     if (authUserId.includes("admin")) role = "admin";
     else if (authUserId.includes("recruiter")) role = "recruiter";
