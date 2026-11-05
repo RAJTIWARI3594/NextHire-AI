@@ -72,7 +72,11 @@ export async function updateSession(request: NextRequest) {
   // Guest access blocked: Unauthenticated users are redirected to login.
   // Only enforced when real Supabase is configured (server-side session exists).
   // In demo mode (no Supabase), access control is handled client-side.
-  if (isDbConfigured && !user && isProtectedRoute) {
+  if (
+    ((!isDbConfigured && process.env.NODE_ENV === "production") ||
+      (isDbConfigured && !user)) &&
+    isProtectedRoute
+  ) {
     url.pathname = "/login";
     url.searchParams.set("next", path);
     return NextResponse.redirect(url);
@@ -89,7 +93,9 @@ export async function updateSession(request: NextRequest) {
 
   // Authenticated user checks
   if (user) {
-    let userRole = user.user_metadata?.role || "student";
+    // Never trust client-editable user_metadata for authorization.
+    // The database profile is the source of truth; missing profiles default to student.
+    let userRole = "student";
 
     const { data: profile } = await supabase
       .from("profiles")
