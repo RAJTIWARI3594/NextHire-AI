@@ -2,8 +2,8 @@ export const siteConfig = {
   name: "NextHire AI",
   description:
     "Next-Generation AI Powered Talent Acquisition & Hiring Intelligence Platform",
-  url: "https://nexthire.ai",
-  ogImage: "https://nexthire.ai/og.png",
+  url: "https://nexthire-ai-six.vercel.app",
+  ogImage: "https://nexthire-ai-six.vercel.app/og.png",
   links: {
     twitter: "https://twitter.com/nexthireai",
     github: "https://github.com/nexthireai",
