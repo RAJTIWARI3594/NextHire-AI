@@ -89,7 +89,7 @@ export default function UserManagementPage() {
           placeholder="Search user by name..."
           icon={<Search className="h-4 w-4" />}
           value={searchQuery}
-          onChange={(value) => setSearchQuery(value)}
+          onChange={(event) => setSearchQuery(event.target.value)}
           className="flex-1"
         />
         <div className="flex gap-2 overflow-x-auto border-b border-border/40 pb-2">
