@@ -99,14 +99,51 @@ export async function toggleUserStatus(
     .eq("id", userId);
 }
 
+export async function fetchRecruiterRequests(): Promise<RecruiterApproval[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("recruiter_profiles")
+    .select(
+      "profile_id, company_name, company_email, is_verified, created_at, profiles:profiles!recruiter_profiles_profile_id_fkey(full_name)"
+    )
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+
+  return (data || []).map((row: any) => {
+    const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
+    return {
+      id: row.profile_id,
+      recruiterName: profile?.full_name || "Recruiter",
+      companyName: row.company_name || "Company not provided",
+      email: row.company_email || "Email not provided",
+      status: row.is_verified ? "approved" : "pending",
+      appliedDate: row.created_at
+        ? new Date(row.created_at).toLocaleDateString("en-IN", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          })
+        : "Date unavailable",
+    };
+  });
+}
+
 export async function approveRecruiterRequest(
   approvalId: string
 ): Promise<void> {
   const supabase = createClient();
-  await supabase
+  const { data, error } = await supabase
     .from("recruiter_profiles")
     .update({ is_verified: true })
-    .eq("id", approvalId);
+    .eq("profile_id", approvalId)
+    .select("profile_id")
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) {
+    throw new Error("Recruiter request not found or administrator access denied.");
+  }
 }
 
 export async function fetchAuditLogs(): Promise<AuditLogItem[]> {

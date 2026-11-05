@@ -23,7 +23,7 @@ import { signInWithEmail, signInWithOAuth } from "@/services/auth-service";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { initializeAuth, setDemoUser, user, isInitialized } = useAuthStore();
+  const { initializeAuth, setDemoUser, user, role, isInitialized } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -42,12 +42,11 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (user) {
-      const role = user.user_metadata?.role || "student";
       if (role === "recruiter") router.replace("/recruiter");
       else if (role === "admin") router.replace("/admin");
       else router.replace("/dashboard");
     }
-  }, [user, router]);
+  }, [user, role, router]);
 
   const {
     register,

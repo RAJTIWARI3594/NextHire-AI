@@ -87,15 +87,20 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         profile: profileData?.profile || null,
         studentProfile: profileData?.studentProfile || null,
         recruiterProfile: profileData?.recruiterProfile || null,
-        role:
-          profileData?.profile?.role ||
-          (user.user_metadata?.role as UserRole) ||
-          "student",
+        // Authorization role comes only from the database profile.
+        role: profileData?.profile?.role || "student",
         isLoading: false,
       });
     } catch (err) {
       console.error("setAuthState error:", err);
-      set({ user, isLoading: false });
+      set({
+        user,
+        profile: null,
+        studentProfile: null,
+        recruiterProfile: null,
+        role: "student",
+        isLoading: false,
+      });
     }
   },
 

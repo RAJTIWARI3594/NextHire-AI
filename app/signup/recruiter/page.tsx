@@ -26,7 +26,7 @@ import { signUpRecruiter } from "@/services/auth-service";
 
 export default function RecruiterSignupPage() {
   const router = useRouter();
-  const { initializeAuth, setDemoUser, user, isInitialized } = useAuthStore();
+  const { initializeAuth, setDemoUser, user, role, isInitialized } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,10 +37,11 @@ export default function RecruiterSignupPage() {
   }, [initializeAuth, isInitialized]);
 
   useEffect(() => {
-    if (user) {
-      router.replace("/recruiter");
-    }
-  }, [user, router]);
+    if (!user) return;
+    if (role === "admin") router.replace("/admin");
+    else if (role === "recruiter") router.replace("/recruiter");
+    else router.replace("/dashboard");
+  }, [user, role, router]);
 
   const {
     register,

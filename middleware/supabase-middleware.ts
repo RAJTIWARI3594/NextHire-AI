@@ -82,15 +82,6 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Logged-in users visiting auth routes are sent to their dashboard
-  if (user && isAuthRoute) {
-    let role = user.user_metadata?.role || "student";
-    if (role === "recruiter") url.pathname = "/recruiter";
-    else if (role === "admin") url.pathname = "/admin";
-    else url.pathname = "/dashboard";
-    return NextResponse.redirect(url);
-  }
-
   // Authenticated user checks
   if (user) {
     // Never trust client-editable user_metadata for authorization.
@@ -99,7 +90,7 @@ export async function updateSession(request: NextRequest) {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role")
+      .select("id, role")
       .eq("auth_user_id", user.id)
       .maybeSingle();
 
@@ -137,6 +128,36 @@ export async function updateSession(request: NextRequest) {
       else if (userRole === "admin") url.pathname = "/admin";
       else url.pathname = "/dashboard";
       return NextResponse.redirect(url);
+    }
+
+    // Auth redirects and route authorization always use the database profile role.
+    if (isAuthRoute) {
+      if (userRole === "recruiter") url.pathname = "/recruiter";
+      else if (userRole === "admin") url.pathname = "/admin";
+      else url.pathname = "/dashboard";
+      return NextResponse.redirect(url);
+    }
+
+    // Recruiter access remains read-only/pending until an administrator verifies the company.
+    if (userRole === "recruiter" && path.startsWith("/recruiter")) {
+      const { data: recruiterProfile, error: recruiterProfileError } = await supabase
+        .from("recruiter_profiles")
+        .select("is_verified")
+        .eq("profile_id", profile?.id || "")
+        .maybeSingle();
+      const isVerified =
+        !recruiterProfileError && recruiterProfile?.is_verified === true;
+      const isPendingVerificationPath =
+        path === "/recruiter/pending-verification";
+
+      if (!isVerified && !isPendingVerificationPath) {
+        url.pathname = "/recruiter/pending-verification";
+        return NextResponse.redirect(url);
+      }
+      if (isVerified && isPendingVerificationPath) {
+        url.pathname = "/recruiter";
+        return NextResponse.redirect(url);
+      }
     }
 
     // Role-based route authorization

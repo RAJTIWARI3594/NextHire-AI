@@ -10,7 +10,7 @@ import { useAuthStore } from "@/lib/store/use-auth-store";
 
 export default function SignupPage() {
   const router = useRouter();
-  const { initializeAuth, isInitialized, user } = useAuthStore();
+  const { initializeAuth, isInitialized, user, role } = useAuthStore();
 
   useEffect(() => {
     if (!isInitialized) initializeAuth();
@@ -18,12 +18,11 @@ export default function SignupPage() {
 
   useEffect(() => {
     if (user) {
-      const role = user.user_metadata?.role || "student";
       if (role === "recruiter") router.replace("/recruiter");
       else if (role === "admin") router.replace("/admin");
       else router.replace("/dashboard");
     }
-  }, [user, router]);
+  }, [user, role, router]);
 
   return (
     <div className="relative flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-12">
