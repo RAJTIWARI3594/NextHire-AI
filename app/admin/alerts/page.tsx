@@ -1,306 +1,185 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import {
-  AlertTriangle,
-  Bell,
-  CheckCircle2,
-  ShieldAlert,
-  RefreshCw,
-  Send,
-  Radio,
-  Info,
-} from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { AlertTriangle, Bell, CheckCircle2, RefreshCw, ShieldAlert } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
+type SystemAlert = {
+  id: string;
+  alertName: string;
+  category: string;
+  severity: "info" | "warning" | "critical";
+  message: string;
+  status: "active" | "acknowledged" | "resolved";
+  triggeredAt: string;
+  resolvedAt?: string;
+};
+
 export default function SystemAlertsPage() {
-  const [alerts, setAlerts] = useState<any[]>([]);
+  const [alerts, setAlerts] = useState<SystemAlert[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filterSeverity, setFilterSeverity] = useState<string>("all");
-  const [webhookUrl, setWebhookUrl] = useState(
-    "https://hooks.slack.com/services/T00/B00/XXXXXX"
-  );
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [filterSeverity, setFilterSeverity] = useState("all");
 
   const fetchAlerts = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      const res = await fetch("/api/alerts");
-      const data = await res.json();
-      if (data.alerts) setAlerts(data.alerts);
-    } catch (err) {
-      console.error("Failed to fetch alerts", err);
+      const response = await fetch("/api/alerts", { cache: "no-store" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Alerts could not be loaded.");
+      setAlerts(data.alerts || []);
+    } catch (loadError: unknown) {
+      setError((loadError as Error)?.message || "Alerts could not be loaded.");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchAlerts();
-  }, []);
+  useEffect(() => { fetchAlerts(); }, []);
 
-  const handleUpdateStatus = async (
-    alertId: string,
-    status: "acknowledged" | "resolved"
-  ) => {
+  const updateAlert = async (alertId: string, status: "acknowledged" | "resolved") => {
+    setSaving(true);
+    setError(null);
     try {
-      const res = await fetch("/api/alerts", {
+      const response = await fetch("/api/alerts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "update_status", alertId, status }),
       });
-      const data = await res.json();
-      if (data.success) fetchAlerts();
-    } catch (err) {
-      console.error("Failed to update alert status", err);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || data.error || "Alert update failed.");
+      await fetchAlerts();
+    } catch (actionError: unknown) {
+      setError((actionError as Error)?.message || "Alert update failed.");
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleTriggerTestAlert = async () => {
+  const triggerTest = async () => {
+    setSaving(true);
+    setError(null);
     try {
-      const res = await fetch("/api/alerts", {
+      const response = await fetch("/api/alerts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "trigger_test",
-          alertName: "Manual SRE Diagnostic Test Alert",
+          alertName: "Manual administrator diagnostic",
           category: "server",
-          severity: "warning",
-          message:
-            "Triggered from the Super Admin Alerts Console for diagnostic verification.",
+          severity: "info",
+          message: "An administrator initiated a diagnostic test alert.",
         }),
       });
-      const data = await res.json();
-      if (data.success) fetchAlerts();
-    } catch (err) {
-      console.error("Failed to trigger test alert", err);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Test alert could not be created.");
+      await fetchAlerts();
+    } catch (actionError: unknown) {
+      setError((actionError as Error)?.message || "Test alert could not be created.");
+    } finally {
+      setSaving(false);
     }
   };
 
-  const filteredAlerts = alerts.filter((a) => {
-    if (filterSeverity === "all") return true;
-    return a.severity === filterSeverity;
-  });
+  const filtered = alerts.filter(
+    (alert) => filterSeverity === "all" || alert.severity === filterSeverity
+  );
 
   return (
-    <div className="mx-auto max-w-7xl space-y-8 p-4 sm:p-8">
+    <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-8">
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div>
-          <div className="flex items-center gap-2">
-            <Badge variant="accent">System Alerting Engine</Badge>
-            <Badge variant="success" className="gap-1">
-              <Radio className="h-3.5 w-3.5 animate-pulse" /> Dispatcher Active
-            </Badge>
-          </div>
-          <h1 className="mt-1 text-3xl font-extrabold tracking-tight">
+          <Badge variant="outline">Process-local alert state</Badge>
+          <h1 className="mt-2 text-2xl font-bold tracking-tight">
             System Alerts & Incident Response
           </h1>
-          <p className="text-sm text-muted-foreground">
-            Configure incident trigger thresholds, monitor active system alerts,
-            manage webhooks, and trigger diagnostic health tests.
+          <p className="mt-2 text-sm text-muted-foreground">
+            Alerts are in-memory and are lost when a serverless instance restarts.
+            This page does not claim persistent incident history or an always-on dispatcher.
           </p>
         </div>
-
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleTriggerTestAlert}
-            className="gap-1.5 text-xs"
-          >
-            <Bell className="h-3.5 w-3.5" /> Trigger Test Alert
+          <Button variant="outline" size="sm" onClick={triggerTest} disabled={saving}>
+            <Bell className="mr-2 h-4 w-4" /> Test alert
           </Button>
-          <Button
-            variant="gradient"
-            size="sm"
-            onClick={fetchAlerts}
-            disabled={loading}
-            className="gap-1.5 text-xs"
-          >
-            <RefreshCw
-              className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`}
-            />{" "}
+          <Button variant="outline" size="sm" onClick={fetchAlerts} disabled={loading}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             Refresh
           </Button>
         </div>
       </div>
 
-      {/* Severity Filter Counters */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Card
-          className={`cursor-pointer border p-4 transition-all ${filterSeverity === "all" ? "border-primary bg-primary/10" : "border-border"}`}
-          onClick={() => setFilterSeverity("all")}
-        >
-          <span className="text-xs font-semibold uppercase text-muted-foreground">
-            All Alerts
-          </span>
-          <p className="mt-1 text-2xl font-extrabold">{alerts.length}</p>
-        </Card>
+      {error && <div role="alert" className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
 
-        <Card
-          className={`cursor-pointer border p-4 transition-all ${filterSeverity === "critical" ? "border-red-500 bg-red-500/10" : "border-border"}`}
-          onClick={() => setFilterSeverity("critical")}
-        >
-          <span className="text-xs font-semibold uppercase text-red-400">
-            Critical
-          </span>
-          <p className="mt-1 text-2xl font-extrabold text-red-400">
-            {alerts.filter((a) => a.severity === "critical").length}
-          </p>
-        </Card>
-
-        <Card
-          className={`cursor-pointer border p-4 transition-all ${filterSeverity === "warning" ? "border-amber-500 bg-amber-500/10" : "border-border"}`}
-          onClick={() => setFilterSeverity("warning")}
-        >
-          <span className="text-xs font-semibold uppercase text-amber-400">
-            Warnings
-          </span>
-          <p className="mt-1 text-2xl font-extrabold text-amber-400">
-            {alerts.filter((a) => a.severity === "warning").length}
-          </p>
-        </Card>
-
-        <Card
-          className={`cursor-pointer border p-4 transition-all ${filterSeverity === "info" ? "border-primary bg-primary/10" : "border-border"}`}
-          onClick={() => setFilterSeverity("info")}
-        >
-          <span className="text-xs font-semibold uppercase text-primary">
-            Info Logs
-          </span>
-          <p className="mt-1 text-2xl font-extrabold text-primary">
-            {alerts.filter((a) => a.severity === "info").length}
-          </p>
-        </Card>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[
+          ["All", alerts.length],
+          ["Critical", alerts.filter((item) => item.severity === "critical").length],
+          ["Warning", alerts.filter((item) => item.severity === "warning").length],
+          ["Info", alerts.filter((item) => item.severity === "info").length],
+        ].map(([label, count]) => (
+          <button key={label} type="button" onClick={() => setFilterSeverity(String(label).toLowerCase())}>
+            <Card className={`p-4 text-left ${filterSeverity === String(label).toLowerCase() ? "border-primary" : ""}`}>
+              <p className="text-xs uppercase text-muted-foreground">{label}</p>
+              <p className="mt-1 text-2xl font-extrabold">{count}</p>
+            </Card>
+          </button>
+        ))}
       </div>
 
-      {/* Main Alert List & Webhook Setup */}
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
-        {/* Alerts Timeline (8 cols) */}
-        <Card className="space-y-4 border-border/60 p-6 lg:col-span-8">
-          <div className="flex items-center justify-between border-b pb-3">
-            <h2 className="flex items-center gap-2 text-sm font-bold">
-              <ShieldAlert className="h-4 w-4 text-primary" /> Active Alert
-              Stream & Incident Timeline
-            </h2>
-            <Badge variant="outline" className="font-mono text-[10px]">
-              Filter: {filterSeverity.toUpperCase()}
-            </Badge>
+      <Card className="space-y-4 border-border/60 p-6">
+        <div className="flex items-center justify-between border-b pb-3">
+          <h2 className="flex items-center gap-2 text-sm font-bold">
+            <ShieldAlert className="h-4 w-4 text-primary" /> Alert events
+          </h2>
+          <Badge variant="outline">{filtered.length} records</Badge>
+        </div>
+        {loading ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">Loading alerts...</p>
+        ) : filtered.length === 0 ? (
+          <div className="space-y-2 py-8 text-center">
+            <AlertTriangle className="mx-auto h-7 w-7 text-muted-foreground" />
+            <p className="text-sm font-medium">No matching alerts in this process</p>
           </div>
-
-          <div className="space-y-3 text-xs">
-            {filteredAlerts.length === 0 ? (
-              <p className="py-8 text-center text-muted-foreground">
-                No alerts matching the selected filter.
-              </p>
-            ) : (
-              filteredAlerts.map((alert) => (
-                <div
-                  key={alert.id}
-                  className="space-y-2 rounded-xl border bg-card/60 p-4"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-2">
-                      <p className="font-bold text-foreground">
-                        {alert.alertName}
-                      </p>
-                      <Badge
-                        variant={
-                          alert.severity === "critical"
-                            ? "destructive"
-                            : alert.severity === "warning"
-                              ? "secondary"
-                              : "outline"
-                        }
-                      >
-                        {alert.severity}
-                      </Badge>
-                      <Badge variant="outline" className="text-[9px] uppercase">
-                        {alert.category}
-                      </Badge>
-                    </div>
-                    <span className="font-mono text-[10px] text-muted-foreground">
-                      {new Date(alert.triggeredAt).toLocaleTimeString()}
-                    </span>
+        ) : (
+          <div className="space-y-3">
+            {filtered.map((alert) => (
+              <div key={alert.id} className="space-y-3 rounded-xl border bg-card/60 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold">{alert.alertName}</p>
+                    <Badge variant={alert.severity === "critical" ? "destructive" : "outline"}>{alert.severity}</Badge>
+                    <Badge variant="outline">{alert.category}</Badge>
                   </div>
-
-                  <p className="text-[11px] text-muted-foreground">
-                    {alert.message}
-                  </p>
-
-                  <div className="flex items-center justify-between border-t pt-2 text-[10px]">
-                    <span
-                      className={`font-semibold ${alert.status === "active" ? "text-red-400" : alert.status === "acknowledged" ? "text-amber-400" : "text-emerald-400"}`}
-                    >
-                      Status: {alert.status.toUpperCase()}
-                    </span>
-
-                    <div className="flex gap-1.5">
-                      {alert.status === "active" && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            handleUpdateStatus(alert.id, "acknowledged")
-                          }
-                          className="h-6 text-[10px]"
-                        >
-                          Acknowledge
-                        </Button>
-                      )}
-                      {alert.status !== "resolved" && (
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() =>
-                            handleUpdateStatus(alert.id, "resolved")
-                          }
-                          className="h-6 text-[10px]"
-                        >
-                          Mark Resolved
-                        </Button>
-                      )}
-                    </div>
+                  <span className="text-[11px] text-muted-foreground">
+                    {new Date(alert.triggeredAt).toLocaleString("en-IN")}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">{alert.message}</p>
+                <div className="flex items-center justify-between gap-3 border-t pt-3">
+                  <Badge variant={alert.status === "resolved" ? "success" : "secondary"}>{alert.status}</Badge>
+                  <div className="flex gap-2">
+                    {alert.status === "active" && (
+                      <Button size="sm" variant="outline" disabled={saving} onClick={() => updateAlert(alert.id, "acknowledged")}>
+                        Acknowledge
+                      </Button>
+                    )}
+                    {alert.status !== "resolved" && (
+                      <Button size="sm" disabled={saving} onClick={() => updateAlert(alert.id, "resolved")}>
+                        <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Resolve
+                      </Button>
+                    )}
                   </div>
                 </div>
-              ))
-            )}
+              </div>
+            ))}
           </div>
-        </Card>
-
-        {/* Webhook Configuration (4 cols) */}
-        <Card className="space-y-4 border-border/60 p-6 lg:col-span-4">
-          <div className="border-b pb-3">
-            <h2 className="flex items-center gap-2 text-sm font-bold">
-              <Send className="h-4 w-4 text-primary" /> Alert Dispatch Webhooks
-            </h2>
-          </div>
-
-          <div className="space-y-3 text-xs">
-            <p className="text-[11px] text-muted-foreground">
-              Automatically push high & critical severity alerts to your
-              team&apos;s Slack or Discord channel.
-            </p>
-
-            <div className="space-y-1">
-              <label className="text-[11px] font-semibold">
-                Slack Webhook URL
-              </label>
-              <input
-                type="text"
-                value={webhookUrl}
-                onChange={(e) => setWebhookUrl(e.target.value)}
-                className="w-full rounded-lg border bg-background px-3 py-2 font-mono text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-            </div>
-
-            <Button size="sm" className="w-full gap-1.5 text-xs">
-              <Send className="h-3.5 w-3.5" /> Save Webhook Config
-            </Button>
-          </div>
-        </Card>
-      </div>
+        )}
+      </Card>
     </div>
   );
 }
