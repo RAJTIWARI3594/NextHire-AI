@@ -75,6 +75,10 @@ export default function LoginPage() {
     setIsSubmitting(true);
     try {
       if (!isSupabaseConfigured()) {
+        if (process.env.NODE_ENV === "production") {
+          setError("Authentication is temporarily unavailable. Please try again later.");
+          return;
+        }
         const role = data.email.includes("admin")
           ? "admin"
           : data.email.includes("recruiter")
