@@ -10,7 +10,6 @@ type CandidateApplicationRow = {
   job_id: string;
   student_id: string;
   student_name: string;
-  student_name: string;
   student_avatar: string | null;
   job_title: string;
   match_score: number | null;
