@@ -45,7 +45,7 @@ export interface AdminMetrics {
   totalCompanies: number;
   totalJobs: number;
   totalApplications: number;
-  dailyAiRequests: number;
+  dailyAiSessions: number;
   monthlyRevenueUsd: number;
   serverHealth: "Healthy" | "Degraded" | "Down";
 }
