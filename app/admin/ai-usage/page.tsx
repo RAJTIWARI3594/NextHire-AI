@@ -1,14 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import {
-  Sparkles,
-  Activity,
-  DollarSign,
-  Cpu,
-  BarChart3,
-  AlertCircle,
-} from "lucide-react";
+import { Sparkles, Activity, Cpu, AlertCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { fetchAIUsageMetrics } from "@/services/saas-service";
@@ -16,109 +9,63 @@ import type { AIUsageMetrics } from "@/types/saas";
 
 export default function AIUsageDashboardPage() {
   const [metrics, setMetrics] = useState<AIUsageMetrics | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function load() {
-      const res = await fetchAIUsageMetrics();
-      setMetrics(res);
-    }
-    load();
+    let active = true;
+    fetchAIUsageMetrics()
+      .then((data) => { if (active) setMetrics(data); })
+      .catch((loadError: unknown) => {
+        if (active) setError((loadError as Error)?.message || "AI usage could not be loaded.");
+      })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
   }, []);
+
+  const metricsList = [
+    { label: "AI chat sessions today", value: metrics ? metrics.totalRequestsToday.toLocaleString() : "—" },
+    { label: "Tokens consumed", value: metrics?.totalTokensUsed == null ? "Not tracked" : metrics.totalTokensUsed.toLocaleString() },
+    { label: "AI provider cost", value: metrics?.totalCostUsd == null ? "Not tracked" : `$${metrics.totalCostUsd.toFixed(2)} USD` },
+    { label: "Cost per user", value: metrics?.costPerUserUsd == null ? "Not tracked" : `$${metrics.costPerUserUsd.toFixed(4)} USD` },
+  ];
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-8">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">
-          AI Model Token & Cost Telemetry Dashboard
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Track Gemini 1.5 model API requests, token consumption per feature,
-          and compute cost per candidate.
+        <Badge variant="outline">Database session counts only</Badge>
+        <h1 className="mt-2 text-2xl font-bold tracking-tight">AI Usage & Cost Telemetry</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          AI chat rows are counted from the database. Token totals, provider model,
+          feature-level usage, and billing cost are not stored in the current schema.
         </p>
       </div>
-
-      {/* Overview Cards */}
+      {error && <div role="alert" className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Card className="border-pink-500/20 p-5">
-          <span className="text-xs font-semibold uppercase text-muted-foreground">
-            Daily Requests
-          </span>
-          <p className="mt-2 text-2xl font-extrabold text-pink-400">18,500</p>
-          <p className="mt-1 text-[10px] text-muted-foreground">
-            Gemini 1.5 Pro
-          </p>
-        </Card>
-
-        <Card className="border-border/60 p-5">
-          <span className="text-xs font-semibold uppercase text-muted-foreground">
-            Tokens Consumed
-          </span>
-          <p className="mt-2 text-2xl font-extrabold text-primary">4.25M</p>
-          <p className="mt-1 text-[10px] text-muted-foreground">
-            Prompt + Completion
-          </p>
-        </Card>
-
-        <Card className="border-emerald-500/20 p-5">
-          <span className="text-xs font-semibold uppercase text-muted-foreground">
-            Daily API Cost
-          </span>
-          <p className="mt-2 text-2xl font-extrabold text-emerald-400">
-            $14.85
-          </p>
-          <p className="mt-1 text-[10px] text-emerald-400">
-            Optimized prompt caching
-          </p>
-        </Card>
-
-        <Card className="border-border/60 p-5">
-          <span className="text-xs font-semibold uppercase text-muted-foreground">
-            Cost Per Student
-          </span>
-          <p className="mt-2 text-2xl font-extrabold text-primary">$0.0010</p>
-          <p className="mt-1 text-[10px] text-muted-foreground">
-            Highly scalable margin
-          </p>
-        </Card>
+        {metricsList.map((metric) => (
+          <Card key={metric.label} className="space-y-2 border-border/60 p-5">
+            <Sparkles className="h-5 w-5 text-primary" />
+            <span className="text-xs font-semibold uppercase text-muted-foreground">{metric.label}</span>
+            <p className="text-2xl font-extrabold text-primary">{loading ? "…" : metric.value}</p>
+          </Card>
+        ))}
       </div>
-
-      {/* Feature Token Usage Breakdown */}
-      <Card className="space-y-4 border-border/60 p-6">
-        <div className="flex items-center justify-between border-b pb-3">
-          <h2 className="flex items-center gap-2 text-sm font-bold">
-            <Cpu className="h-4 w-4 text-primary" /> Token Consumption by AI
-            Feature
-          </h2>
-          <Badge variant="accent">Gemini 1.5 Telemetry</Badge>
-        </div>
-
-        <div className="space-y-3 text-xs">
-          {(
-            metrics?.featureBreakdown || [
-              { feature: "AI Career Coach", count: 8200, cost: 6.45 },
-              { feature: "AI Resume Review", count: 4500, cost: 3.8 },
-              { feature: "AI Mock Interview", count: 3800, cost: 3.1 },
-              { feature: "AI Cover Letter", count: 2000, cost: 1.5 },
-            ]
-          ).map((item) => (
-            <div
-              key={item.feature}
-              className="flex items-center justify-between rounded-xl border bg-card/60 p-4"
-            >
-              <div>
-                <p className="font-bold text-foreground">{item.feature}</p>
-                <p className="text-[10px] text-muted-foreground">
-                  {item.count.toLocaleString()} AI Invocation Calls
-                </p>
-              </div>
-              <div className="text-right">
-                <span className="text-sm font-extrabold text-emerald-400">
-                  ${item.cost.toFixed(2)} USD
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
+      <Card className="space-y-3 border-border/60 p-6">
+        <h2 className="flex items-center gap-2 text-sm font-bold"><Cpu className="h-4 w-4 text-primary" /> Feature breakdown</h2>
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Loading recorded AI sessions...</p>
+        ) : (
+          <div className="flex items-start gap-3 rounded-lg border bg-muted/30 p-4">
+            <AlertCircle className="mt-0.5 h-4 w-4 text-amber-500" />
+            <p className="text-xs text-muted-foreground">
+              No feature attribution or token metering is present in the stored AI chat schema.
+              No feature split or dollar cost is estimated.
+            </p>
+          </div>
+        )}
+        <p className="flex items-center gap-2 text-[11px] text-muted-foreground">
+          <Activity className="h-3.5 w-3.5" /> Source: ai_chat_history rows created today.
+        </p>
       </Card>
     </div>
   );
