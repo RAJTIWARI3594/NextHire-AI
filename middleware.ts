@@ -6,30 +6,57 @@ import {
 } from "@/lib/security/rate-limiter";
 import { detectLoginAnomaly } from "@/lib/security/bot-protection";
 
+function getAllowedOrigin(request: NextRequest): string | null {
+  const origin = request.headers.get("origin");
+  if (!origin) return null;
+
+  const allowed = new Set<string>([request.nextUrl.origin]);
+  const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+  if (configuredSiteUrl) {
+    try {
+      allowed.add(new URL(configuredSiteUrl).origin);
+    } catch {
+      // Ignore malformed optional configuration.
+    }
+  }
+
+  const vercelUrl = process.env.VERCEL_URL;
+  if (vercelUrl) allowed.add(`https://${vercelUrl}`);
+
+  // The verified production hostname; exact-origin matching only.
+  allowed.add("https://nexthire-ai-six.vercel.app");
+
+  return allowed.has(origin) ? origin : null;
+}
+
 export async function middleware(request: NextRequest) {
   const requestId = request.headers.get("x-request-id") || crypto.randomUUID();
   const startTime = Date.now();
   const path = request.nextUrl.pathname;
-  const origin = request.headers.get("origin") || "*";
+  const allowedOrigin = getAllowedOrigin(request);
+  const isApiRoute = path.startsWith("/api/");
 
-  // 0. Handle CORS Preflight Requests for API routes
-  if (request.method === "OPTIONS" && path.startsWith("/api/")) {
-    return new NextResponse(null, {
-      status: 204,
-      headers: {
-        "Access-Control-Allow-Origin": origin,
-        "Access-Control-Allow-Methods":
-          "GET, POST, PUT, DELETE, PATCH, OPTIONS",
-        "Access-Control-Allow-Headers":
-          "Content-Type, Authorization, X-Requested-With, x-request-id",
-        "Access-Control-Allow-Credentials": "true",
-        "Access-Control-Max-Age": "86400",
-        "x-request-id": requestId,
-      },
+  // Reject cross-origin preflight requests unless their origin is explicitly trusted.
+  if (request.method === "OPTIONS" && isApiRoute) {
+    if (request.headers.has("origin") && !allowedOrigin) {
+      return NextResponse.json({ error: "Origin not allowed" }, { status: 403 });
+    }
+
+    const headers = new Headers({
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+      "Access-Control-Allow-Headers":
+        "Content-Type, Authorization, X-Requested-With, x-request-id",
+      "Access-Control-Max-Age": "86400",
+      "Vary": "Origin",
+      "x-request-id": requestId,
     });
+    if (allowedOrigin) {
+      headers.set("Access-Control-Allow-Origin", allowedOrigin);
+      headers.set("Access-Control-Allow-Credentials", "true");
+    }
+    return new NextResponse(null, { status: 204, headers });
   }
 
-  // 1. Determine rate limit tier based on request path
   let tier:
     | "auth_login"
     | "auth_signup"
@@ -62,32 +89,32 @@ export async function middleware(request: NextRequest) {
   )
     tier = "file_upload";
 
-  // 2. Evaluate rate limiting
   const clientIp = getClientIdentifier(request);
   const rateLimitResult = checkRateLimit(clientIp, tier);
 
   if (!rateLimitResult.allowed) {
+    const headers = new Headers({
+      "Retry-After": `${Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000)}`,
+      "X-RateLimit-Limit": `${rateLimitResult.limit}`,
+      "X-RateLimit-Remaining": "0",
+      "X-RateLimit-Reset": `${rateLimitResult.resetTime}`,
+      "x-request-id": requestId,
+      "Vary": "Origin",
+    });
+    if (allowedOrigin) {
+      headers.set("Access-Control-Allow-Origin", allowedOrigin);
+      headers.set("Access-Control-Allow-Credentials", "true");
+    }
     return NextResponse.json(
       {
         error: "Too Many Requests",
         message: "Rate limit exceeded. Please wait before retrying.",
         retryAfterMs: Math.max(0, rateLimitResult.resetTime - Date.now()),
       },
-      {
-        status: 429,
-        headers: {
-          "Retry-After": `${Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000)}`,
-          "X-RateLimit-Limit": `${rateLimitResult.limit}`,
-          "X-RateLimit-Remaining": `${rateLimitResult.remaining}`,
-          "X-RateLimit-Reset": `${rateLimitResult.resetTime}`,
-          "x-request-id": requestId,
-          "Access-Control-Allow-Origin": origin,
-        },
-      }
+      { status: 429, headers }
     );
   }
 
-  // 3. Bot Anomaly Detection on Auth endpoints
   if (
     path.startsWith("/login") ||
     path.startsWith("/signup") ||
@@ -101,17 +128,13 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // 4. Execute session & route security validation
   const response = await updateSession(request);
-
-  // 5. Inject Telemetry & CORS Headers
   response.headers.set("x-request-id", requestId);
   response.headers.set("x-response-time-ms", `${Date.now() - startTime}`);
   response.headers.set("X-RateLimit-Limit", `${rateLimitResult.limit}`);
   response.headers.set("X-RateLimit-Remaining", `${rateLimitResult.remaining}`);
 
-  if (path.startsWith("/api/")) {
-    response.headers.set("Access-Control-Allow-Origin", origin);
+  if (isApiRoute) {
     response.headers.set(
       "Access-Control-Allow-Methods",
       "GET, POST, PUT, DELETE, PATCH, OPTIONS"
@@ -120,7 +143,14 @@ export async function middleware(request: NextRequest) {
       "Access-Control-Allow-Headers",
       "Content-Type, Authorization, X-Requested-With, x-request-id"
     );
-    response.headers.set("Access-Control-Allow-Credentials", "true");
+    response.headers.set("Vary", "Origin");
+    if (allowedOrigin) {
+      response.headers.set("Access-Control-Allow-Origin", allowedOrigin);
+      response.headers.set("Access-Control-Allow-Credentials", "true");
+    } else {
+      response.headers.delete("Access-Control-Allow-Origin");
+      response.headers.delete("Access-Control-Allow-Credentials");
+    }
   }
 
   return response;
@@ -128,9 +158,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except static assets
-     */
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
