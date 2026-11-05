@@ -23,28 +23,7 @@ export interface SystemAlert {
 }
 
 class AlertEngine {
-  private inMemoryAlerts: SystemAlert[] = [
-    {
-      id: "alt-001",
-      alertName: "AI Provider Latency Threshold",
-      category: "ai_provider",
-      severity: "warning",
-      message:
-        "Gemini 1.5 Flash response duration exceeded 1.2s target latency.",
-      status: "active",
-      triggeredAt: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
-    },
-    {
-      id: "alt-002",
-      alertName: "Database Connection Spike",
-      category: "database",
-      severity: "info",
-      message: "PgBouncer connection pool utilized 82% of max limit.",
-      status: "resolved",
-      triggeredAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-      resolvedAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
-    },
-  ];
+  private inMemoryAlerts: SystemAlert[] = [];
 
   /**
    * Dispatch a system alert event.
