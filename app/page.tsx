@@ -76,13 +76,13 @@ const howItWorksSteps = [
     step: "04",
     title: "Prepare and apply",
     description:
-      "Practice mock interviews, tailor your resume, and submit applications cleanly.",
+      "Practice mock interviews, tailor your resume, and apply directly on employer websites.",
   },
   {
     step: "05",
     title: "Track your progress",
     description:
-      "Monitor application statuses, assessment scores, and career growth in one workspace.",
+      "Monitor your preparation, assessment scores, and career growth in one workspace.",
   },
 ];
 
@@ -139,13 +139,13 @@ export default function HomePage() {
                 Get started <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
-            <Link href="#how-it-works">
+            <Link href="/opportunities">
               <Button
                 variant="outline"
                 size="lg"
                 className="w-full gap-2 border-border/80 sm:w-auto"
               >
-                Explore platform
+                Browse jobs
               </Button>
             </Link>
           </motion.div>
