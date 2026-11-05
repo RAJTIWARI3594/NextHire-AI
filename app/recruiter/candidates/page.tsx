@@ -193,7 +193,7 @@ export default function CandidateRankingPage() {
                     </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {candidate.jobTitle} • {candidate.studentEmail} • Applied{" "}
+                    {candidate.jobTitle} • Applied{" "}
                     {candidate.appliedDate}
                   </p>
                 </div>
