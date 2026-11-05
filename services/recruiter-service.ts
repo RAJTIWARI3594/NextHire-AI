@@ -10,11 +10,10 @@ type CandidateApplicationRow = {
   job_id: string;
   student_id: string;
   student_name: string;
-  student_email: string;
+  student_name: string;
   student_avatar: string | null;
   job_title: string;
   match_score: number | null;
-  ats_score: number | null;
   applied_at: string;
   is_shortlisted: boolean;
 };
@@ -42,11 +41,11 @@ export async function fetchRankedCandidates(): Promise<CandidateRanking[]> {
       jobId: row.job_id,
       studentId: row.student_id,
       studentName: row.student_name || "Candidate",
-      studentEmail: row.student_email || "",
+      studentEmail: "",
       studentAvatar: row.student_avatar || undefined,
       jobTitle: row.job_title || "Job listing",
       overallScore: matchScore,
-      atsScore: Number(row.ats_score || 0),
+      atsScore: 0,
       skillsScore: 0,
       interviewScore: 0,
       recommendation: toRecommendation(matchScore),
