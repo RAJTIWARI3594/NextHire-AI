@@ -18,6 +18,8 @@ interface AdminStore {
   setMetrics: (metrics: AdminMetrics) => void;
   setUsers: (users: PlatformUser[]) => void;
   setRecruiters: (recruiters: RecruiterApproval[]) => void;
+  setJobs: (jobs: JobModerationItem[]) => void;
+  toggleJobStatus: (jobId: string) => void;
   toggleUserStatus: (userId: string) => void;
   approveRecruiter: (id: string) => void;
   approveJob: (id: string) => void;
@@ -33,6 +35,15 @@ export const useAdminStore = create<AdminStore>((set) => ({
   setMetrics: (metrics) => set({ metrics }),
   setUsers: (users) => set({ users }),
   setRecruiters: (recruiters) => set({ recruiters }),
+  setJobs: (jobs) => set({ jobs }),
+  toggleJobStatus: (jobId) =>
+    set((state) => ({
+      jobs: state.jobs.map((job) =>
+        job.id === jobId
+          ? { ...job, status: job.status === "active" ? "inactive" : "active" }
+          : job
+      ),
+    })),
 
   toggleUserStatus: (userId) =>
     set((state) => ({
