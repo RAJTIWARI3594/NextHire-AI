@@ -4,6 +4,7 @@ import type {
   RecruiterApproval,
   AuditLogItem,
   AdminMetrics,
+  JobModerationItem,
 } from "@/types/admin";
 
 export const EMPTY_ADMIN_METRICS: AdminMetrics = {
@@ -205,4 +206,84 @@ export async function fetchAuditLogs(): Promise<AuditLogItem[]> {
       ipAddress: row.ip_address || "Not recorded",
     };
   });
+}
+
+export async function fetchAdminJobs(): Promise<JobModerationItem[]> {
+  const supabase = createClient();
+  const [jobsResult, reportsResult] = await Promise.all([
+    supabase
+      .from("jobs")
+      .select("id, title, is_active, created_at, company:companies!jobs_company_id_fkey(name)")
+      .order("created_at", { ascending: false }),
+    supabase.from("reports").select("target_type, target_id"),
+  ]);
+
+  if (jobsResult.error) throw jobsResult.error;
+  if (reportsResult.error) throw reportsResult.error;
+
+  const reportCounts = new Map<string, number>();
+  (reportsResult.data || []).forEach((report) => {
+    if (
+      report.target_id &&
+      ["job", "job_listing"].includes(String(report.target_type).toLowerCase())
+    ) {
+      reportCounts.set(
+        report.target_id,
+        (reportCounts.get(report.target_id) || 0) + 1
+      );
+    }
+  });
+
+  return (jobsResult.data || []).map((job: any) => {
+    const company = Array.isArray(job.company) ? job.company[0] : job.company;
+    return {
+      id: job.id,
+      title: job.title || "Untitled job",
+      companyName: company?.name || "Company not linked",
+      postedDate: job.created_at
+        ? new Date(job.created_at).toLocaleDateString("en-IN", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          })
+        : "Date unavailable",
+      status: job.is_active ? "active" : "inactive",
+      reportsCount: reportCounts.get(job.id) || 0,
+    };
+  });
+}
+
+export async function toggleAdminJobStatus(
+  jobId: string,
+  currentStatus: string
+): Promise<void> {
+  const supabase = createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError) throw authError;
+  if (!user) throw new Error("Administrator sign-in is required.");
+
+  const { data: actor, error: actorError } = await supabase
+    .from("profiles")
+    .select("role, is_suspended")
+    .eq("auth_user_id", user.id)
+    .single();
+
+  if (actorError) throw actorError;
+  if (actor.role !== "admin" || actor.is_suspended) {
+    throw new Error("Only an active administrator can moderate job listings.");
+  }
+
+  const { data, error } = await supabase
+    .from("jobs")
+    .update({ is_active: currentStatus !== "active" })
+    .eq("id", jobId)
+    .select("id")
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) throw new Error("Job not found or administrator access denied.");
 }
