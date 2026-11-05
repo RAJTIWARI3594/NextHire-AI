@@ -1,53 +1,56 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 import { metricsCollector } from "@/lib/monitoring/metrics-collector";
 
 export const dynamic = "force-dynamic";
 
-/**
- * GET /api/monitoring/stats
- * Telemetry endpoint feeding real-time metrics to Admin SRE & Performance Dashboards.
- */
-export async function GET(request: NextRequest) {
-  const snapshot = metricsCollector.getSnapshot();
+export async function GET() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
 
-  const timeSeries = Array.from({ length: 12 }, (_, i) => {
-    const timeLabel = `${12 - i}m ago`;
-    return {
-      time: timeLabel,
-      apiLatency: Math.max(
-        15,
-        snapshot.apiLatencyMs + Math.floor((Math.random() - 0.5) * 12)
-      ),
-      dbQueryTime: Math.max(
-        5,
-        snapshot.dbQueryTimeMs + Math.floor((Math.random() - 0.5) * 4)
-      ),
-      aiResponseTime: Math.max(
-        200,
-        snapshot.aiResponseTimeMs + Math.floor((Math.random() - 0.5) * 80)
-      ),
-      errorRate: Math.max(
-        0,
-        parseFloat(
-          (snapshot.errorRatePercent + (Math.random() - 0.5) * 0.1).toFixed(2)
-        )
-      ),
-      activeUsers:
-        snapshot.activeUsers + Math.floor((Math.random() - 0.5) * 20),
-    };
-  });
+  if (authError || !user) {
+    return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("role, is_suspended")
+    .eq("auth_user_id", user.id)
+    .maybeSingle();
+
+  if (profileError) {
+    return NextResponse.json(
+      { error: "Unable to verify administrator permissions." },
+      { status: 503 }
+    );
+  }
+
+  if (profile?.role !== "admin" || profile.is_suspended === true) {
+    return NextResponse.json({ error: "Administrator access required." }, { status: 403 });
+  }
+
+  const snapshot = metricsCollector.getSnapshot();
+  const timeSeries = [
+    {
+      time: new Date(snapshot.timestamp).toLocaleTimeString("en-IN"),
+      apiLatency: snapshot.apiLatencyMs,
+      dbQueryTime: snapshot.dbQueryTimeMs,
+      aiResponseTime: snapshot.aiResponseTimeMs,
+      errorRate: snapshot.errorRatePercent,
+      activeUsers: snapshot.activeUsers,
+    },
+  ];
 
   return NextResponse.json(
     {
       snapshot,
       timeSeries,
-      status: "operational",
-      version: "1.0.0-prod",
+      status: "observed",
+      note: "Metrics are process-local. Active users, queue depth, CPU, and storage are not instrumented.",
     },
-    {
-      headers: {
-        "Cache-Control": "no-store, max-age=0",
-      },
-    }
+    { headers: { "Cache-Control": "no-store, max-age=0" } }
   );
 }
