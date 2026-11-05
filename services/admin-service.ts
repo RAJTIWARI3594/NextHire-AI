@@ -117,7 +117,7 @@ export async function fetchRecruiterRequests(): Promise<RecruiterApproval[]> {
       recruiterName: profile?.full_name || "Recruiter",
       companyName: row.company_name || "Company not provided",
       email: row.company_email || "Email not provided",
-      status: row.is_verified ? "approved" : "pending",
+      status: row.is_verified ? ("approved" as const) : ("pending" as const),
       appliedDate: row.created_at
         ? new Date(row.created_at).toLocaleDateString("en-IN", {
             day: "2-digit",

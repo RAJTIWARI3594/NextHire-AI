@@ -26,8 +26,11 @@ jobs:
           node-version: 20.x
           cache: "npm"
 
+      - name: Reconcile lockfile with package manifest
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
       - name: Install Dependencies
-        run: npm ci
+        run: npm ci --no-audit --no-fund
 
       - name: Execute Type-Check Validation
         run: npm run type-check
