@@ -287,3 +287,81 @@ export async function toggleAdminJobStatus(
   if (error) throw error;
   if (!data) throw new Error("Job not found or administrator access denied.");
 }
+
+export interface AdminAnnouncement {
+  id: string;
+  title: string;
+  content: string;
+  targetRole: "student" | "recruiter" | "admin" | null;
+  createdAt: string;
+}
+
+async function requireAdminForAnnouncementChanges() {
+  const supabase = createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError) throw authError;
+  if (!user) throw new Error("Administrator sign-in is required.");
+
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .select("role, is_suspended")
+    .eq("auth_user_id", user.id)
+    .single();
+  if (error) throw error;
+  if (profile.role !== "admin" || profile.is_suspended) {
+    throw new Error("Only an active administrator can manage announcements.");
+  }
+  return supabase;
+}
+
+export async function fetchAnnouncements(): Promise<AdminAnnouncement[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("announcements")
+    .select("id, title, content, target_role, created_at")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+
+  return (data || []).map((row) => ({
+    id: row.id,
+    title: row.title,
+    content: row.content,
+    targetRole: row.target_role || null,
+    createdAt: new Date(row.created_at).toLocaleString("en-IN"),
+  }));
+}
+
+export async function createAnnouncement(input: {
+  title: string;
+  content: string;
+  targetRole: "student" | "recruiter" | "admin" | null;
+}): Promise<void> {
+  if (input.title.trim().length < 3 || input.title.length > 160) {
+    throw new Error("Announcement title must contain 3 to 160 characters.");
+  }
+  if (input.content.trim().length < 10 || input.content.length > 12000) {
+    throw new Error("Announcement content must contain 10 to 12,000 characters.");
+  }
+  const supabase = await requireAdminForAnnouncementChanges();
+  const { error } = await supabase.from("announcements").insert({
+    title: input.title.trim(),
+    content: input.content.trim(),
+    target_role: input.targetRole,
+  });
+  if (error) throw error;
+}
+
+export async function deleteAnnouncement(id: string): Promise<void> {
+  const supabase = await requireAdminForAnnouncementChanges();
+  const { data, error } = await supabase
+    .from("announcements")
+    .delete()
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error("Announcement not found or administrator access denied.");
+}
