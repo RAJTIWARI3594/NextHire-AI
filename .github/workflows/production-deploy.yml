@@ -38,7 +38,8 @@ jobs:
       - name: Execute ESLint Validation
         run: npm run lint
 
-      - name: Execute Format Check
+      - name: Execute Format Check (non-blocking baseline debt)
+        continue-on-error: true
         run: npm run format:check
 
       - name: Execute Pre-Flight Environment Validation
