@@ -6,7 +6,7 @@ import type {
   AuditLogItem,
   AdminMetrics,
 } from "@/types/admin";
-import { MOCK_ADMIN_METRICS, MOCK_USERS_LIST } from "@/services/admin-service";
+import { EMPTY_ADMIN_METRICS } from "@/services/admin-service";
 
 interface AdminStore {
   metrics: AdminMetrics;
@@ -17,59 +17,45 @@ interface AdminStore {
 
   setMetrics: (metrics: AdminMetrics) => void;
   setUsers: (users: PlatformUser[]) => void;
+  setRecruiters: (recruiters: RecruiterApproval[]) => void;
   toggleUserStatus: (userId: string) => void;
   approveRecruiter: (id: string) => void;
   approveJob: (id: string) => void;
 }
 
 export const useAdminStore = create<AdminStore>((set) => ({
-  metrics: MOCK_ADMIN_METRICS,
-  users: MOCK_USERS_LIST,
-  recruiters: [
-    {
-      id: "rec-app-1",
-      recruiterName: "Marcus Vance",
-      companyName: "Nexus AI Intelligence",
-      email: "marcus@nexusai.com",
-      status: "pending",
-      appliedDate: "Aug 4, 2026",
-    },
-  ],
-  jobs: [
-    {
-      id: "job-mod-1",
-      title: "Senior Full Stack Engineer",
-      companyName: "Vercel Partner Labs",
-      postedDate: "Aug 5, 2026",
-      status: "active",
-      reportsCount: 0,
-    },
-  ],
+  metrics: EMPTY_ADMIN_METRICS,
+  users: [],
+  recruiters: [],
+  jobs: [],
   auditLogs: [],
 
   setMetrics: (metrics) => set({ metrics }),
   setUsers: (users) => set({ users }),
+  setRecruiters: (recruiters) => set({ recruiters }),
 
   toggleUserStatus: (userId) =>
     set((state) => ({
-      users: state.users.map((u) =>
-        u.id === userId
-          ? { ...u, status: u.status === "active" ? "suspended" : "active" }
-          : u
+      users: state.users.map((user) =>
+        user.id === userId
+          ? { ...user, status: user.status === "active" ? "suspended" : "active" }
+          : user
       ),
     })),
 
   approveRecruiter: (id) =>
     set((state) => ({
-      recruiters: state.recruiters.map((r) =>
-        r.id === id ? { ...r, status: "approved" as const } : r
+      recruiters: state.recruiters.map((recruiter) =>
+        recruiter.id === id
+          ? { ...recruiter, status: "approved" as const }
+          : recruiter
       ),
     })),
 
   approveJob: (id) =>
     set((state) => ({
-      jobs: state.jobs.map((j) =>
-        j.id === id ? { ...j, status: "active" as const } : j
+      jobs: state.jobs.map((job) =>
+        job.id === id ? { ...job, status: "active" as const } : job
       ),
     })),
 }));
