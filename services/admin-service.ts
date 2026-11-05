@@ -111,7 +111,7 @@ export async function toggleUserStatus(
 
   const { data, error } = await supabase
     .from("profiles")
-    .update({ is_suspended: currentStatus !== "active" })
+    .update({ is_suspended: currentStatus === "active" })
     .eq("id", userId)
     .select("id")
     .maybeSingle();
