@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS idx_interview_events_job_id ON public.interview_events(job_id);
