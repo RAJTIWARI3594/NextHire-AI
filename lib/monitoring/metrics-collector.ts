@@ -8,6 +8,10 @@ export interface TelemetrySnapshot {
   memoryUsagePercent: number;
   cpuUsagePercent: number;
   storageUsagePercent: number;
+  requestsObserved: number;
+  apiSamples: number;
+  dbSamples: number;
+  aiSamples: number;
   timestamp: string;
 }
 
@@ -18,70 +22,59 @@ class MetricsCollector {
   private totalRequests = 0;
   private totalErrors = 0;
 
-  /**
-   * Record API response latency.
-   */
   public recordApiLatency(durationMs: number, statusCode: number): void {
+    if (!Number.isFinite(durationMs) || durationMs < 0) return;
     this.totalRequests += 1;
-    if (statusCode >= 500) {
-      this.totalErrors += 1;
-    }
+    if (statusCode >= 500) this.totalErrors += 1;
     this.latencySamples.push(durationMs);
-    if (this.latencySamples.length > 500) {
-      this.latencySamples.shift();
-    }
+    if (this.latencySamples.length > 500) this.latencySamples.shift();
   }
 
-  /**
-   * Record Database query timing.
-   */
   public recordDbQueryTime(durationMs: number): void {
+    if (!Number.isFinite(durationMs) || durationMs < 0) return;
     this.dbQuerySamples.push(durationMs);
-    if (this.dbQuerySamples.length > 500) {
-      this.dbQuerySamples.shift();
-    }
+    if (this.dbQuerySamples.length > 500) this.dbQuerySamples.shift();
   }
 
-  /**
-   * Record AI Provider response duration.
-   */
   public recordAiResponseTime(durationMs: number): void {
+    if (!Number.isFinite(durationMs) || durationMs < 0) return;
     this.aiResponseSamples.push(durationMs);
-    if (this.aiResponseSamples.length > 500) {
-      this.aiResponseSamples.shift();
-    }
+    if (this.aiResponseSamples.length > 500) this.aiResponseSamples.shift();
   }
 
   private calculateAverage(samples: number[]): number {
     if (samples.length === 0) return 0;
-    const sum = samples.reduce((acc, curr) => acc + curr, 0);
-    return Math.round(sum / samples.length);
+    return Math.round(
+      samples.reduce((total, sample) => total + sample, 0) / samples.length
+    );
   }
 
-  /**
-   * Generate current telemetry snapshot for SRE dashboards.
-   */
   public getSnapshot(): TelemetrySnapshot {
     const memory = process.memoryUsage();
-    // Memory calculation relative to Node process heap
-    const heapUsedMb = memory.heapUsed / (1024 * 1024);
-    const memoryPercent = Math.min(99, Math.round((heapUsedMb / 512) * 100));
-
-    const errorRate =
-      this.totalRequests > 0
-        ? (this.totalErrors / this.totalRequests) * 100
-        : 0.02;
+    const heapPercent =
+      memory.heapTotal > 0
+        ? Math.round((memory.heapUsed / memory.heapTotal) * 100)
+        : 0;
 
     return {
-      apiLatencyMs: this.calculateAverage(this.latencySamples) || 42,
-      dbQueryTimeMs: this.calculateAverage(this.dbQuerySamples) || 12,
-      aiResponseTimeMs: this.calculateAverage(this.aiResponseSamples) || 420,
-      errorRatePercent: parseFloat(errorRate.toFixed(2)),
-      activeUsers: 1420 + Math.floor(Math.random() * 50),
-      queuePendingJobs: Math.floor(Math.random() * 8),
-      memoryUsagePercent: Math.max(18, memoryPercent),
-      cpuUsagePercent: Math.min(85, Math.floor(22 + Math.random() * 15)),
-      storageUsagePercent: 14.5,
+      apiLatencyMs: this.calculateAverage(this.latencySamples),
+      dbQueryTimeMs: this.calculateAverage(this.dbQuerySamples),
+      aiResponseTimeMs: this.calculateAverage(this.aiResponseSamples),
+      errorRatePercent:
+        this.totalRequests > 0
+          ? Number(((this.totalErrors / this.totalRequests) * 100).toFixed(2))
+          : 0,
+      // No active-session or queue instrumentation is configured yet.
+      activeUsers: 0,
+      queuePendingJobs: 0,
+      memoryUsagePercent: heapPercent,
+      // CPU and storage usage are not sampled by this serverless process.
+      cpuUsagePercent: 0,
+      storageUsagePercent: 0,
+      requestsObserved: this.totalRequests,
+      apiSamples: this.latencySamples.length,
+      dbSamples: this.dbQuerySamples.length,
+      aiSamples: this.aiResponseSamples.length,
       timestamp: new Date().toISOString(),
     };
   }
