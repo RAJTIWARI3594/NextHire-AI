@@ -1,277 +1,251 @@
-import Link from "next/link";
-import {
-  ArrowDownRight,
-  ArrowRight,
-  ArrowUpRight,
-  BookOpenCheck,
-  BriefcaseBusiness,
-  Check,
-  Compass,
-  FileText,
-  MessageCircleMore,
-  Sparkles,
-  Video,
-} from "lucide-react";
-import "./home.css";
+"use client";
 
-const tools = [
+import React, { useState } from "react";
+import Link from "next/link";
+import { motion } from "framer-motion";
+import {
+  FileText,
+  Briefcase,
+  Video,
+  BookOpen,
+  ArrowRight,
+  CheckCircle2,
+  Play,
+  Layers,
+  Sparkles,
+  TrendingUp,
+  UserCheck,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/card";
+import { Modal } from "@/components/ui/modal";
+
+const platformFeatures = [
   {
-    number: "01",
     icon: FileText,
-    title: "Make your experience clear",
-    text: "Shape a resume around your projects, strengths and the role you want next.",
-    href: "/dashboard/ai-resume",
-    link: "Build a resume",
-    color: "sage",
+    title: "Resume Builder & Review",
+    description:
+      "Craft professional ATS-optimized resumes with real-time score feedback and keyword recommendations.",
   },
   {
-    number: "02",
-    icon: Compass,
-    title: "Find a direction that fits",
-    text: "Explore roles and learning paths, then choose a next step that feels doable.",
-    href: "/opportunities",
-    link: "Explore opportunities",
-    color: "peach",
+    icon: Briefcase,
+    title: "Curated Job Opportunities",
+    description:
+      "Discover tech roles matched directly to your verified skills, experience level, and career preferences.",
   },
   {
-    number: "03",
     icon: Video,
-    title: "Get comfortable talking about you",
-    text: "Practice interview questions at your own pace and work on your answers.",
-    href: "/dashboard/ai-interview",
-    link: "Practice an interview",
-    color: "lavender",
+    title: "Interactive Interview Practice",
+    description:
+      "Practice mock technical and behavioral interviews with actionable performance feedback.",
   },
   {
-    number: "04",
-    icon: MessageCircleMore,
-    title: "Talk through the tricky bits",
-    text: "Use the career coach to think through applications, goals and what comes next.",
-    href: "/dashboard/ai-coach",
-    link: "Open career coach",
-    color: "blue",
+    icon: BookOpen,
+    title: "Personalized Learning Paths",
+    description:
+      "Follow structured roadmaps to master high-demand software engineering and product skills.",
   },
 ];
 
-const steps = [
-  [
-    "Start where you are",
-    "Add your background, interests and the work you’ve done.",
-  ],
-  [
-    "Choose one useful next step",
-    "Build a resume, explore openings or practice a conversation.",
-  ],
-  [
-    "Keep moving at your pace",
-    "Use your workspace to come back to your applications and plans.",
-  ],
+const howItWorksSteps = [
+  {
+    step: "01",
+    title: "Build your profile",
+    description:
+      "Define your skills, projects, and career targets to stand out to hiring managers.",
+  },
+  {
+    step: "02",
+    title: "Improve your skills",
+    description:
+      "Follow structured learning roadmaps to close skill gaps and gain confidence.",
+  },
+  {
+    step: "03",
+    title: "Discover opportunities",
+    description:
+      "Access curated jobs and internships tailored to your profile and location.",
+  },
+  {
+    step: "04",
+    title: "Prepare and apply",
+    description:
+      "Practice mock interviews, tailor your resume, and apply directly on employer websites.",
+  },
+  {
+    step: "05",
+    title: "Track your progress",
+    description:
+      "Monitor your preparation, assessment scores, and career growth in one workspace.",
+  },
 ];
 
 export default function HomePage() {
+  const [isDemoModalOpen, setIsDemoModalOpen] = useState(false);
+
   return (
-    <div className="nh-home">
-      <section className="nh-hero">
-        <div className="nh-hero-grid" aria-hidden="true" />
-        <div className="nh-hero-inner">
-          <div className="nh-hero-copy">
-            <p className="nh-kicker">
-              <span className="nh-kicker-mark" /> A career toolkit for your next
-              chapter
-            </p>
-            <h1>
-              Make your next move
-              <br />
-              <em>feel more like yours.</em>
-            </h1>
-            <p className="nh-lede">
-              A calmer place to work on your resume, explore opportunities and
-              get ready for the conversations ahead.
-            </p>
-            <div className="nh-actions">
-              <Link className="nh-button nh-button-dark" href="/signup/student">
-                Start with your profile <ArrowRight size={17} />
-              </Link>
-              <Link className="nh-text-link" href="/opportunities">
-                Explore opportunities <ArrowUpRight size={16} />
-              </Link>
-            </div>
-            <div className="nh-note">
-              <Sparkles size={14} /> Built for students, freshers and
-              early-career explorers.
-            </div>
-          </div>
-
-          <div
-            className="nh-hero-art"
-            aria-label="Illustration of a career workspace"
+    <div className="flex min-h-screen flex-col bg-[#080B12] text-foreground">
+      {/* Hero Section */}
+      <section className="relative overflow-hidden border-b border-border/60 pb-16 pt-20 md:pb-28 md:pt-28">
+        <div className="container mx-auto max-w-4xl px-4 text-center sm:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="mb-6 inline-flex items-center gap-2 rounded-full border border-border/80 bg-card px-3.5 py-1 text-xs font-semibold text-muted-foreground"
           >
-            <div className="nh-orbit nh-orbit-one" />
-            <div className="nh-orbit nh-orbit-two" />
-            <div className="nh-sun" />
-            <div className="nh-floating-note nh-note-top">
-              <span className="nh-note-icon">
-                <FileText size={17} />
-              </span>
-              <span>
-                <b>Your story</b>
-                <small>Projects · skills · goals</small>
-              </span>
-              <Check className="nh-check" size={16} />
-            </div>
-            <div className="nh-workspace-card">
-              <div className="nh-workspace-head">
-                <span className="nh-window-dots">
-                  <i />
-                  <i />
-                  <i />
-                </span>
-                <span>YOUR NEXT STEP</span>
-                <ArrowDownRight size={17} />
-              </div>
-              <div className="nh-workspace-body">
-                <div className="nh-portrait" aria-hidden="true">
-                  <span>✳</span>
-                </div>
-                <div className="nh-person-copy">
-                  <span className="nh-skeleton nh-skeleton-wide" />
-                  <span className="nh-skeleton nh-skeleton-short" />
-                  <span className="nh-person-tag">
-                    EARLY CAREER · OPEN TO GROW
-                  </span>
-                </div>
-              </div>
-              <div className="nh-workspace-rule" />
-              <div className="nh-workspace-links">
-                <span>
-                  <FileText size={15} /> Resume
-                </span>
-                <span>
-                  <BriefcaseBusiness size={15} /> Roles
-                </span>
-                <span>
-                  <Video size={15} /> Practice
-                </span>
-              </div>
-              <div className="nh-workspace-footer">
-                <span className="nh-status-dot" /> A little progress, one step
-                at a time <ArrowRight size={14} />
-              </div>
-            </div>
-            <div className="nh-floating-note nh-note-bottom">
-              <span className="nh-sparkle-badge">
-                <Sparkles size={17} />
-              </span>
-              <span>
-                <b>Small steps count.</b>
-                <small>Pick up where you left off.</small>
-              </span>
-            </div>
-            <div className="nh-art-caption">
-              A workspace that grows with you <span>✳</span>
-            </div>
-          </div>
-        </div>
-        <div className="nh-hero-bottom">
-          <span>LESS GUESSWORK, MORE GOOD NEXT STEPS</span>
-          <span>01 / 03</span>
-        </div>
-      </section>
+            <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+            <span>NextHire Career Platform</span>
+          </motion.div>
 
-      <section className="nh-tools section-wrap" id="toolkit">
-        <div className="nh-section-heading">
-          <div>
-            <p className="nh-eyebrow">A LITTLE HELP, RIGHT WHEN YOU NEED IT</p>
-            <h2>
-              Good work deserves
-              <br />
-              <em>a good place to grow.</em>
-            </h2>
-          </div>
-          <p className="nh-section-intro">
-            Career plans aren’t always a straight line. Use the tools that help
-            today, and leave the rest for later.
-          </p>
-        </div>
-        <div className="nh-tool-grid">
-          {tools.map(
-            ({ number, icon: Icon, title, text, href, link, color }) => (
-              <article className={`nh-tool-card ${color}`} key={number}>
-                <div className="nh-card-top">
-                  <span>{number} / TOOL</span>
-                  <span className="nh-tool-icon">
-                    <Icon size={19} />
-                  </span>
-                </div>
-                <h3>{title}</h3>
-                <p>{text}</p>
-                <Link href={href} className="nh-card-link">
-                  {link}
-                  <ArrowUpRight size={16} />
-                </Link>
-              </article>
-            )
-          )}
-        </div>
-      </section>
+          <motion.h1
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, delay: 0.05 }}
+            className="mx-auto text-4xl font-extrabold tracking-tight text-foreground sm:text-5xl md:text-6xl"
+          >
+            BUILD THE CAREER <br />
+            <span className="text-primary">YOU WANT.</span>
+          </motion.h1>
 
-      <section className="nh-path-section">
-        <div className="section-wrap nh-path-inner">
-          <div className="nh-path-title">
-            <p className="nh-eyebrow">NO PERFECT TIMELINE REQUIRED</p>
-            <h2>
-              One step is
-              <br />
-              <em>still a start.</em>
-            </h2>
-            <p>
-              Come back to your plans when you’re ready. You don’t have to
-              figure out the whole career at once.
-            </p>
-            <Link className="nh-path-link" href="/dashboard/applications">
-              Go to your workspace <ArrowRight size={16} />
+          <motion.p
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, delay: 0.1 }}
+            className="mx-auto mt-6 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base"
+          >
+            Learn the right skills, build a stronger profile, discover relevant
+            jobs, prepare for interviews, and track your career progress all in
+            one place.
+          </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, delay: 0.15 }}
+            className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row"
+          >
+            <Link href="/dashboard">
+              <Button
+                size="lg"
+                className="w-full gap-2 px-6 font-semibold sm:w-auto"
+              >
+                Get started <ArrowRight className="h-4 w-4" />
+              </Button>
             </Link>
+            <Link href="/opportunities">
+              <Button
+                variant="outline"
+                size="lg"
+                className="w-full gap-2 border-border/80 sm:w-auto"
+              >
+                Browse jobs
+              </Button>
+            </Link>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* How NextHire Works */}
+      <section
+        id="how-it-works"
+        className="border-b border-border/60 bg-card/20 py-20"
+      >
+        <div className="container mx-auto max-w-5xl px-4 sm:px-8">
+          <div className="mx-auto mb-14 max-w-2xl text-center">
+            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+              HOW NEXTHIRE WORKS
+            </h2>
+            <p className="mt-2 text-xs text-muted-foreground sm:text-sm">
+              A structured step-by-step path to advance your professional
+              career.
+            </p>
           </div>
-          <div className="nh-steps">
-            {steps.map(([title, text], index) => (
-              <div className="nh-step" key={title}>
-                <span className="nh-step-number">0{index + 1}</span>
-                <div>
-                  <h3>{title}</h3>
-                  <p>{text}</p>
-                </div>
-                <span className="nh-step-check">
-                  <Check size={15} />
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
+            {howItWorksSteps.map((step, idx) => (
+              <div
+                key={step.step}
+                className="flex flex-col rounded-lg border border-border/80 bg-card p-5 transition-colors hover:border-primary/50"
+              >
+                <span className="mb-3 text-xs font-bold tracking-wider text-primary">
+                  {step.step}
                 </span>
+                <h3 className="mb-1 text-sm font-semibold text-foreground">
+                  {step.title}
+                </h3>
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  {step.description}
+                </p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="nh-bottom-cta">
-        <div className="section-wrap nh-cta-inner">
-          <div className="nh-cta-flower" aria-hidden="true">
-            ✳
+      {/* Core Platform Modules */}
+      <section className="border-b border-border/60 py-20">
+        <div className="container mx-auto max-w-5xl px-4 sm:px-8">
+          <div className="mx-auto mb-12 max-w-2xl text-center">
+            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+              EVERYTHING FOR YOUR CAREER
+            </h2>
+            <p className="mt-2 text-xs text-muted-foreground sm:text-sm">
+              Integrated tools designed to guide you from learning to landing
+              top offers.
+            </p>
           </div>
-          <div>
-            <p className="nh-eyebrow">YOUR NEXT CHAPTER STARTS SOMEWHERE</p>
-            <h2>It can start right here.</h2>
-            <p>Pick one thing you’d like to make easier today.</p>
+
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+            {platformFeatures.map((feat) => {
+              const Icon = feat.icon;
+              return (
+                <Card key={feat.title} className="p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-border/60 bg-secondary text-primary">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-semibold text-foreground">
+                        {feat.title}
+                      </h3>
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                        {feat.description}
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+              );
+            })}
           </div>
-          <Link className="nh-button nh-button-cream" href="/dashboard">
-            Open your workspace <ArrowRight size={17} />
-          </Link>
         </div>
       </section>
 
-      <div className="nh-footnote">
-        <span>NextHire AI</span>
-        <span>Tools to help you move forward, at your own pace.</span>
-        <span>
-          <BookOpenCheck size={14} /> Learn · Prepare · Explore
-        </span>
-      </div>
+      {/* CTA Footer Section */}
+      <section className="bg-card/40 py-16">
+        <div className="container mx-auto max-w-3xl px-4 text-center sm:px-8">
+          <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+            Ready to take the next step in your career?
+          </h2>
+          <p className="mt-3 text-xs text-muted-foreground sm:text-sm">
+            Join thousands of developers and professionals managing their growth
+            on NextHire.
+          </p>
+          <div className="mt-6 flex justify-center">
+            <Link href="/dashboard">
+              <Button size="lg" className="gap-2 font-semibold">
+                Open Workspace <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
