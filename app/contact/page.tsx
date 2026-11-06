@@ -92,7 +92,7 @@ export default function ContactPage() {
               {
                 icon: Phone,
                 label: "Sales Desk",
-                value: "+1 (800) 555-NEXT",
+                value: BRANDING.contactPhone,
                 color: "bg-primary/10 text-primary",
               },
               {
@@ -183,7 +183,7 @@ export default function ContactPage() {
                 <textarea
                   rows={4}
                   placeholder="Tell us about the roles you are looking to fill with AI..."
-                  className="flex w-full resize-none rounded-md border border-border bg-transparent px-3 py-2 text-sm ring-offset-background transition-all placeholder:text-muted-foreground/50 focus-visible:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  className="flex w-full resize-none rounded-md border border-border bg-transparent px-3 py-2 text-sm ring-offset-background transition-all placeholder:text-muted-foreground/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   {...register("hiringNeeds")}
                 />
                 {errors.hiringNeeds && (
