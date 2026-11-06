@@ -25,7 +25,11 @@ export async function fetchAdminMetrics(): Promise<AdminMetrics> {
   dayStart.setHours(0, 0, 0, 0);
   const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 
-  const [students, recruiters, companies, jobs, applications, aiSessions, payments] =
+  const healthCheck = fetch("/api/health", { cache: "no-store" })
+    .then((response) => (response.ok ? ("Healthy" as const) : ("Degraded" as const)))
+    .catch(() => "Down" as const);
+
+  const [students, recruiters, companies, jobs, applications, aiSessions, payments, serverHealth] =
     await Promise.all([
       supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "student"),
       supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "recruiter"),
@@ -34,6 +38,7 @@ export async function fetchAdminMetrics(): Promise<AdminMetrics> {
       supabase.from("job_applications").select("id", { count: "exact", head: true }),
       supabase.from("ai_chat_history").select("id", { count: "exact", head: true }).gte("created_at", dayStart.toISOString()),
       supabase.from("payments").select("amount").eq("currency", "USD").in("status", ["success", "succeeded", "completed", "paid"]).gte("created_at", monthStart.toISOString()),
+      healthCheck,
     ]);
 
   const responses = [students, recruiters, companies, jobs, applications, aiSessions, payments];
@@ -53,7 +58,7 @@ export async function fetchAdminMetrics(): Promise<AdminMetrics> {
     totalApplications: applications.count || 0,
     dailyAiSessions: aiSessions.count || 0,
     monthlyRevenueUsd,
-    serverHealth: "Healthy",
+    serverHealth,
   };
 }
 
