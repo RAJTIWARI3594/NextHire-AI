@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Briefcase, ShieldAlert, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -17,7 +17,7 @@ export default function JobModerationPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadJobs = async () => {
+  const loadJobs = useCallback(async () => {
     setError(null);
     setIsLoading(true);
     try {
@@ -27,11 +27,11 @@ export default function JobModerationPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [setJobs]);
 
   useEffect(() => {
     loadJobs();
-  }, []);
+  }, [loadJobs]);
 
   const handleToggle = async (id: string, currentStatus: string) => {
     setError(null);
