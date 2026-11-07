@@ -18,16 +18,20 @@ export async function POST(request: NextRequest) {
     } = body;
 
     const geminiKey = env.GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+    const geminiModel = env.GEMINI_MODEL || process.env.GEMINI_MODEL || "gemini-3.8-flash";
 
     if (action === "questions") {
       if (geminiKey && !geminiKey.includes("placeholder")) {
         try {
-          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
+          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent`;
           const promptText = `Generate 4 realistic ${interviewType} interview questions for a candidate applying as a ${jobRole}. Return JSON format with array of items having "id", "questionText", and "category".`;
 
           const res = await fetch(geminiUrl, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": geminiKey,
+          },
             body: JSON.stringify({
               contents: [{ role: "user", parts: [{ text: promptText }] }],
             }),

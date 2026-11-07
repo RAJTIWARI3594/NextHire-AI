@@ -29,6 +29,7 @@ const requiredEnvVars = [
 const optionalServerSecrets = [
   "SUPABASE_SERVICE_ROLE_KEY",
   "OPENAI_API_KEY",
+  "GEMINI_API_KEY",
   "STRIPE_SECRET_KEY",
 ];
 
