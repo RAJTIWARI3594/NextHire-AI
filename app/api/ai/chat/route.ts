@@ -12,7 +12,7 @@ interface ChatMessage {
 /**
  * POST /api/ai/chat
  * AI Assistant endpoint powering NextHire AI Career Coach.
- * Integrates with Google Gemini 1.5 Flash / OpenAI, with intelligent fallback.
+ * Integrates with Google Gemini / OpenAI, with intelligent fallback.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
 
     const studentName = context?.studentName || "Student";
     const geminiKey = env.GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+    const geminiModel = env.GEMINI_MODEL || process.env.GEMINI_MODEL || "gemini-3.8-flash";
     const openaiKey = env.OPENAI_API_KEY || process.env.OPENAI_API_KEY;
 
     // 1. Try Google Gemini API if key is configured
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest) {
       try {
         const systemPrompt = `You are NextHire AI Career Coach, a world-class career mentor and technical interviewer for tech candidates. Candidate Name: ${studentName}. Course/Domain: ${context?.course || "Full Stack Engineering"}. Keep answers structured, highly actionable, concise, and professional.`;
 
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent`;
 
         const payload = {
           contents: [
@@ -62,7 +63,10 @@ export async function POST(request: NextRequest) {
 
         const res = await fetch(geminiUrl, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": geminiKey,
+          },
           body: JSON.stringify(payload),
         });
 
@@ -89,7 +93,7 @@ export async function POST(request: NextRequest) {
               content: generatedText,
               codeSnippet,
               language,
-              provider: "gemini-1.5-flash",
+              provider: "gemini-3.8-flash",
             });
           }
         }
