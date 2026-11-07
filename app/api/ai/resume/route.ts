@@ -14,15 +14,19 @@ export async function POST(request: NextRequest) {
     const { resumeData, jobTarget = "Full Stack Engineer" } = body;
 
     const geminiKey = env.GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+    const geminiModel = env.GEMINI_MODEL || process.env.GEMINI_MODEL || "gemini-3.8-flash";
 
     if (geminiKey && !geminiKey.includes("placeholder") && resumeData) {
       try {
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent`;
         const promptText = `Analyze this candidate resume for target role "${jobTarget}": ${JSON.stringify(resumeData)}. Return ATS score (0-100), key strengths, missing keywords, and 3 actionable improvement suggestions.`;
 
         const res = await fetch(geminiUrl, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": geminiKey,
+          },
           body: JSON.stringify({
             contents: [{ role: "user", parts: [{ text: promptText }] }],
           }),
@@ -36,7 +40,7 @@ export async function POST(request: NextRequest) {
               success: true,
               analysisText: text,
               atsScore: 88,
-              provider: "gemini-1.5-flash",
+              provider: "gemini-3.8-flash",
             });
           }
         }
